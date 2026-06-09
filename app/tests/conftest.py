@@ -71,6 +71,21 @@ def rl_client(monkeypatch):
 
 
 @pytest.fixture
+def dev_client(monkeypatch):
+    """Yield a TestClient with dev mode enabled (DEBUG + permissive CORS)."""
+    from app.config import get_settings
+
+    monkeypatch.setenv("OPENSPECTIVE_DEV_MODE", "1")
+    get_settings.cache_clear()
+    _apply_common_mocks(monkeypatch)
+    from app.main import app
+
+    with TestClient(app) as test_client:
+        yield test_client
+    get_settings.cache_clear()
+
+
+@pytest.fixture
 def auth_client(monkeypatch):
     """Yield a TestClient with Bearer auth enabled (token == TEST_TOKEN)."""
     from app.config import get_settings

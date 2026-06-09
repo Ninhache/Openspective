@@ -38,6 +38,15 @@ class Settings(BaseSettings):
     cache_ttl: int = 3600  # OPENSPECTIVE_CACHE_TTL (seconds)
     log_level: str = "INFO"  # OPENSPECTIVE_LOG_LEVEL
     workers: int = 1  # OPENSPECTIVE_WORKERS
+    # Developer conveniences: DEBUG logging + permissive CORS (for a local frontend
+    # on another port). Off by default. Hot-reload is enabled via the launch command
+    # (scripts/dev.sh or docker-compose.dev.yml), not here.
+    dev_mode: bool = False  # OPENSPECTIVE_DEV_MODE
+
+    @property
+    def effective_log_level(self) -> str:
+        """DEBUG when dev mode is on, otherwise the configured level."""
+        return "DEBUG" if self.dev_mode else self.log_level
     # Comma-separated Bearer tokens. Empty (default) disables auth entirely, which
     # keeps openspective a frictionless drop-in. Set OPENSPECTIVE_API_TOKENS to enable.
     api_tokens: str = ""  # OPENSPECTIVE_API_TOKENS

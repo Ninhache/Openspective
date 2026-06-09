@@ -11,7 +11,7 @@ import logging
 import time
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 
 from app import __version__
@@ -34,10 +34,13 @@ def _configure_logging(level: str) -> None:
 async def lifespan(app: FastAPI):
     """Load the model at startup and release resources at shutdown."""
     settings = get_settings()
-    _configure_logging(settings.log_level)
-    logging.getLogger("openspective").info(
+    _configure_logging(settings.effective_log_level)
+    log = logging.getLogger("openspective")
+    log.info(
         "Starting openspective v%s (model=%s)", __version__, settings.model_variant
     )
+    if settings.dev_mode:
+        log.warning("DEV MODE on: DEBUG logging + permissive CORS. Docs at /docs.")
     # Load the model once, before serving any request.
     classifier.load_model(settings.model_variant)
     try:
@@ -103,4 +106,22 @@ async def _instrument_requests(request: Request, call_next):
     REQUEST_COUNT.labels(
         method=request.method, path=path, status=str(response.status_code)
     ).inc()
+    return response
+
+
+@app.middleware("http")
+async def _dev_cors(request: Request, call_next):
+    """In dev mode only, add permissive CORS headers so a local frontend on another
+    port can call the API. Read dynamically per request so the toggle is testable.
+    No-op when dev mode is off."""
+    if not get_settings().dev_mode:
+        return await call_next(request)
+    # Short-circuit CORS preflight requests.
+    if request.method == "OPTIONS":
+        response = Response(status_code=204)
+    else:
+        response = await call_next(request)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "*"
     return response
