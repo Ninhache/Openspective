@@ -68,8 +68,10 @@ Response:
 ```
 
 `requestedAttributes` is optional — omit it to receive **all** attributes. `languages` is optional
-too; if omitted, `detectedLanguages` is returned as `["unknown"]` (automatic detection is planned
-for v0.2).
+too; if omitted, the language is auto-detected (via `langdetect`) and returned in
+`detectedLanguages`. A supplied `languages` value overrides the reported `languages` while
+`detectedLanguages` still reflects what was detected. Undetectable input falls back to
+`["unknown"]`.
 
 ### Endpoints
 
@@ -149,7 +151,6 @@ The test suite mocks the classifier and Redis, so `pytest` runs fast and offline
 
 ## Roadmap (v0.2)
 
-- Real language detection for `detectedLanguages` (langdetect / fastText).
 - Optional Bearer-token authentication + rate limiting.
 - Span / per-sentence scores.
 - Prometheus metrics and a distinct readiness probe.

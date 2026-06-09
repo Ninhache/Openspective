@@ -24,6 +24,7 @@ dependencies = [
     "pydantic>=2.6",
     "pydantic-settings>=2.2",
     "redis>=5.0",
+    "langdetect>=1.0.9",
     # NOTE: torch and detoxify are installed in the Dockerfile, not here:
     #   - torch is pinned to the CPU-only wheel index for a smaller image.
     #   - detoxify is installed from the OFFICIAL GitHub repo (pinned tag), because
