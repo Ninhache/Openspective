@@ -11,6 +11,7 @@ from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse, Response
 
 from app.models import ALL_ATTRIBUTES, PERSPECTIVE_TO_DETOXIFY, ErrorResponse
+from app.routers.validation import oversize_response
 from app.services import chart, scoring
 from app.services.detector import detect_language
 
@@ -39,6 +40,8 @@ async def chart_svg(
     ),
 ):
     """Return an SVG chart of the comment's attribute scores."""
+    if (oversize := oversize_response(text)) is not None:
+        return oversize
     requested = _resolve_attributes(attributes)
     chart_style = style if style in chart.STYLES else "gauges"
     try:
