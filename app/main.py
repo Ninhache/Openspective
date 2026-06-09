@@ -9,14 +9,16 @@ self-hosters) Perspective replacement use case.
 """
 
 import logging
+import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 
 from app import __version__
 from app.config import get_settings
 from app.routers import analyze, meta
 from app.services import cache, classifier
+from app.services.metrics import REQUEST_COUNT, REQUEST_LATENCY
 
 
 def _configure_logging(level: str) -> None:
@@ -53,3 +55,27 @@ app = FastAPI(
 
 app.include_router(analyze.router)
 app.include_router(meta.router)
+
+
+def _route_label(request: Request) -> str:
+    """Return the matched route template (low cardinality), or the raw path.
+
+    Using the template (e.g. ``/v1alpha1/comments:analyze``) instead of the raw URL
+    keeps Prometheus label cardinality bounded.
+    """
+    route = request.scope.get("route")
+    return getattr(route, "path", request.url.path)
+
+
+@app.middleware("http")
+async def _instrument_requests(request: Request, call_next):
+    """Record request count and latency for every HTTP request."""
+    start = time.perf_counter()
+    response = await call_next(request)
+    elapsed = time.perf_counter() - start
+    path = _route_label(request)
+    REQUEST_LATENCY.labels(method=request.method, path=path).observe(elapsed)
+    REQUEST_COUNT.labels(
+        method=request.method, path=path, status=str(response.status_code)
+    ).inc()
+    return response

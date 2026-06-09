@@ -75,11 +75,13 @@ too; if omitted, the language is auto-detected (via `langdetect`) and returned i
 
 ### Endpoints
 
-| Method | Path                              | Description                              |
-|--------|-----------------------------------|------------------------------------------|
-| POST   | `/v1alpha1/comments:analyze`      | Score a comment (Perspective-compatible) |
-| GET    | `/healthz`                        | Liveness/readiness probe                  |
-| GET    | `/v1/models`                      | List variants + currently loaded model    |
+| Method | Path                              | Description                                  |
+|--------|-----------------------------------|----------------------------------------------|
+| POST   | `/v1alpha1/comments:analyze`      | Score a comment (Perspective-compatible)     |
+| GET    | `/healthz`                        | Liveness probe (always 200 while serving)    |
+| GET    | `/readyz`                         | Readiness probe (200 only once model loaded) |
+| GET    | `/v1/models`                      | List variants + currently loaded model       |
+| GET    | `/metrics`                        | Prometheus metrics (requests, inference, cache) |
 
 ---
 
@@ -153,7 +155,6 @@ The test suite mocks the classifier and Redis, so `pytest` runs fast and offline
 
 - Optional Bearer-token authentication + rate limiting.
 - Span / per-sentence scores.
-- Prometheus metrics and a distinct readiness probe.
 - Fine-tuning hooks and configurable score thresholds.
 
 ## License
