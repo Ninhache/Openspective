@@ -38,10 +38,13 @@ class AnalyzeRequest(BaseModel):
     """A Perspective-compatible ``comments:analyze`` request body."""
 
     comment: Comment
-    # Optional: if omitted/empty, all available attributes are returned.
+    # Optional: if omitted/empty, all available attributes are returned. Each value
+    # may carry a ``scoreThreshold`` (float) used to filter returned span scores.
     requestedAttributes: dict[str, dict] | None = None  # noqa: N815 (Perspective schema)
-    # Optional: if omitted, language is not detected (TODO: langdetect in v0.2).
+    # Optional: if omitted, language is auto-detected.
     languages: list[str] | None = None
+    # Optional: when true, include per-span (sentence) scores per attribute.
+    spanAnnotations: bool = False  # noqa: N815 (Perspective schema)
     clientToken: str | None = None  # noqa: N815 (Perspective schema)
 
 
@@ -52,10 +55,23 @@ class SummaryScore(BaseModel):
     type: Literal["PROBABILITY"] = "PROBABILITY"
 
 
+class SpanScore(BaseModel):
+    """A score for a single span (sentence) of the comment.
+
+    ``begin``/``end`` are character offsets into the original comment text.
+    """
+
+    begin: int
+    end: int
+    score: SummaryScore
+
+
 class AttributeScore(BaseModel):
-    """Wrapper holding the summary score for one attribute."""
+    """Wrapper holding the summary (and optional span) scores for one attribute."""
 
     summaryScore: SummaryScore  # noqa: N815 (Perspective schema)
+    # Present only when ``spanAnnotations`` was requested; omitted otherwise.
+    spanScores: list[SpanScore] | None = None  # noqa: N815 (Perspective schema)
 
 
 class AnalyzeResponse(BaseModel):

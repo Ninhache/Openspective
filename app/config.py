@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     rate_limit: int = 0  # OPENSPECTIVE_RATE_LIMIT (max requests per window)
     rate_limit_window: int = 60  # OPENSPECTIVE_RATE_LIMIT_WINDOW (seconds)
 
+    # Default span-score threshold: when span annotations are requested, spans scoring
+    # below this value are omitted. A per-attribute ``scoreThreshold`` in the request
+    # overrides this. 0.0 (default) returns all spans.
+    score_threshold: float = 0.0  # OPENSPECTIVE_SCORE_THRESHOLD
+
     @property
     def api_token_set(self) -> set[str]:
         """Return the configured Bearer tokens as a set (empty == auth disabled)."""

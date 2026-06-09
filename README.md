@@ -73,6 +73,42 @@ too; if omitted, the language is auto-detected (via `langdetect`) and returned i
 `detectedLanguages` still reflects what was detected. Undetectable input falls back to
 `["unknown"]`.
 
+### Span scores
+
+Set `spanAnnotations: true` to also receive per-sentence scores for each attribute (like
+Perspective's `spanScores`). Each span carries character offsets into the original text:
+
+```bash
+curl -X POST http://localhost:8080/v1alpha1/comments:analyze \
+  -H "Content-Type: application/json" \
+  -d '{
+    "comment": { "text": "Nice to meet you. You are an idiot." },
+    "requestedAttributes": { "TOXICITY": { "scoreThreshold": 0.5 } },
+    "spanAnnotations": true
+  }'
+```
+
+```json
+{
+  "attributeScores": {
+    "TOXICITY": {
+      "summaryScore": { "value": 0.91, "type": "PROBABILITY" },
+      "spanScores": [
+        { "begin": 18, "end": 35, "score": { "value": 0.91, "type": "PROBABILITY" } }
+      ]
+    }
+  }
+}
+```
+
+Notes:
+- A per-attribute `scoreThreshold` (or the `OPENSPECTIVE_SCORE_THRESHOLD` default) filters which
+  spans are returned — spans below the threshold are omitted (the summary score is always returned).
+- Sentence splitting is a lightweight, dependency-free `.!?` splitter — good for highlighting toxic
+  sentences, not a perfect linguistic tokenizer.
+- Span scoring runs one inference **per span**, so it is more expensive than a summary-only call and
+  is **not cached**.
+
 ### Endpoints
 
 | Method | Path                              | Description                                  |
@@ -99,6 +135,7 @@ All settings are environment variables (prefix `OPENSPECTIVE_`):
 | `OPENSPECTIVE_API_TOKENS`  | _(empty)_               | Comma-separated Bearer tokens; empty disables auth  |
 | `OPENSPECTIVE_RATE_LIMIT`  | `0`                     | Max requests per window; `0` disables rate limiting |
 | `OPENSPECTIVE_RATE_LIMIT_WINDOW` | `60`              | Rate-limit window length in seconds                 |
+| `OPENSPECTIVE_SCORE_THRESHOLD` | `0.0`             | Default min score for returned span scores          |
 
 See [`.env.example`](.env.example) for a starter file.
 
@@ -194,8 +231,7 @@ The test suite mocks the classifier and Redis, so `pytest` runs fast and offline
 
 ## Roadmap (v0.2)
 
-- Span / per-sentence scores.
-- Fine-tuning hooks and configurable score thresholds.
+- Fine-tuned Detoxify checkpoint hook (load custom weights via `OPENSPECTIVE_MODEL` path).
 
 ## Security
 
