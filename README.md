@@ -109,6 +109,22 @@ Notes:
 - Span scoring runs one inference **per span**, so it is more expensive than a summary-only call and
   is **not cached**.
 
+### Score chart (SVG)
+
+`GET /chart?text=...` returns an SVG of circular gauges — one per attribute, percentage in the
+centre, colour-graded by score — similar to Perspective's score diagram. It's embeddable directly:
+
+```html
+<img src="http://localhost:8080/chart?text=you%20are%20such%20an%20idiot" alt="toxicity scores">
+```
+
+```bash
+curl "http://localhost:8080/chart?text=you%20are%20such%20an%20idiot" -o scores.svg
+```
+
+Optional `attributes` query param limits the gauges, e.g. `&attributes=TOXICITY,INSULT`. The chart
+endpoint runs inference, so it is covered by auth + rate limiting when those are enabled.
+
 ### Endpoints
 
 | Method | Path                              | Description                                  |
@@ -116,6 +132,7 @@ Notes:
 | POST   | `/v1alpha1/comments:analyze`      | Score a comment (Perspective-compatible)     |
 | GET    | `/healthz`                        | Liveness probe (always 200 while serving)    |
 | GET    | `/readyz`                         | Readiness probe (200 only once model loaded) |
+| GET    | `/chart`                          | SVG gauge chart of a comment's scores        |
 | GET    | `/v1/models`                      | List variants + currently loaded model       |
 | GET    | `/metrics`                        | Prometheus metrics (requests, inference, cache) |
 
