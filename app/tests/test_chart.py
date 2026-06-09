@@ -31,6 +31,36 @@ def test_chart_endpoint_respects_attributes_filter(client):
     assert "THREAT" not in body and "OBSCENE" not in body
 
 
+def test_render_radar_is_single_svg_with_all_labels():
+    """The radar style emits one polygon over all attributes with their labels."""
+    svg = render_svg("hi", {"TOXICITY": 0.9, "INSULT": 0.5, "THREAT": 0.1}, style="radar")
+    assert svg.startswith("<svg")
+    assert "<polygon" in svg  # the data polygon
+    for name in ("TOXICITY", "INSULT", "THREAT"):
+        assert name in svg
+
+
+def test_render_polar_uses_wedges():
+    """The polar style emits one wedge (path) per attribute."""
+    svg = render_svg("hi", {"TOXICITY": 0.9, "INSULT": 0.5}, style="polar")
+    assert svg.count("<path") == 2
+
+
+def test_chart_endpoint_radar_style(client):
+    """GET /chart?style=radar returns a radar SVG."""
+    resp = client.get("/chart", params={"text": "you are an idiot", "style": "radar"})
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("image/svg+xml")
+    assert "<polygon" in resp.text
+
+
+def test_chart_endpoint_unknown_style_falls_back_to_gauges(client):
+    """An unknown style falls back to gauges rather than erroring."""
+    resp = client.get("/chart", params={"text": "hi", "style": "bogus"})
+    assert resp.status_code == 200
+    assert "92%" in resp.text  # gauge percentage text
+
+
 def test_chart_endpoint_requires_auth_when_enabled(auth_client):
     """When auth is enabled, /chart needs a valid Bearer token (it runs inference)."""
     unauth = auth_client.get("/chart", params={"text": "hi"})

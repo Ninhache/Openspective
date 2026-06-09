@@ -122,8 +122,22 @@ centre, colour-graded by score — similar to Perspective's score diagram. It's 
 curl "http://localhost:8080/chart?text=you%20are%20such%20an%20idiot" -o scores.svg
 ```
 
-Optional `attributes` query param limits the gauges, e.g. `&attributes=TOXICITY,INSULT`. The chart
-endpoint runs inference, so it is covered by auth + rate limiting when those are enabled.
+Pick a `style` to get a single combined chart instead of separate gauges:
+
+| `style`  | Look                                             |
+|----------|--------------------------------------------------|
+| `gauges` | One donut gauge per attribute (default)          |
+| `radar`  | A single radar / spider chart over all attributes |
+| `polar`  | A single polar-area (rose) chart                  |
+
+```bash
+curl -G http://localhost:8080/chart \
+  --data-urlencode "text=you are such an idiot" \
+  --data-urlencode "style=radar" -o chart.svg
+```
+
+Optional `attributes` query param limits the attributes shown, e.g. `&attributes=TOXICITY,INSULT`.
+The chart endpoint runs inference, so it is covered by auth + rate limiting when those are enabled.
 
 ### Endpoints
 
