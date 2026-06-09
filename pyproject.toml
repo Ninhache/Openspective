@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openspective"
+version = "0.1.0"
+description = "Self-hosted, open-source drop-in replacement for the Google Perspective API."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Ninhache" }]
+keywords = ["toxicity", "moderation", "perspective-api", "detoxify", "fastapi"]
+classifiers = [
+    "Programming Language :: Python :: 3.11",
+    "Framework :: FastAPI",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "pydantic>=2.6",
+    "pydantic-settings>=2.2",
+    "redis>=5.0",
+    # NOTE: torch and detoxify are installed in the Dockerfile, not here:
+    #   - torch is pinned to the CPU-only wheel index for a smaller image.
+    #   - detoxify is installed from the OFFICIAL GitHub repo (pinned tag), because
+    #     the PyPI/HuggingFace model card diverges from the official implementation.
+    # For local (non-Docker) development install them manually:
+    #   pip install torch --index-url https://download.pytorch.org/whl/cpu
+    #   pip install "git+https://github.com/unitaryai/detoxify@v0.5.2"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "httpx>=0.27",
+    "ruff>=0.4",
+]
+
+[project.urls]
+Homepage = "https://github.com/Ninhache/Openspective"
+Repository = "https://github.com/Ninhache/Openspective"
+Issues = "https://github.com/Ninhache/Openspective/issues"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["app/tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B"]
