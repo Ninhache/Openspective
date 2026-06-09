@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 
 from app import __version__
 from app.config import get_settings
-from app.routers import analyze, meta
+from app.routers import analyze, chart, meta
 from app.security import AuthError, RateLimitError, rate_limit, require_auth
 from app.services import classifier, redis_client
 from app.services.metrics import REQUEST_COUNT, REQUEST_LATENCY
@@ -54,11 +54,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Auth + rate limiting guard the analyze endpoint only; operational routes stay
-# open for probes and scrapers.
-app.include_router(
-    analyze.router, dependencies=[Depends(require_auth), Depends(rate_limit)]
-)
+# Auth + rate limiting guard the scoring endpoints (analyze + chart, which both run
+# inference); operational routes stay open for probes and scrapers.
+_scoring_guards = [Depends(require_auth), Depends(rate_limit)]
+app.include_router(analyze.router, dependencies=_scoring_guards)
+app.include_router(chart.router, dependencies=_scoring_guards)
 app.include_router(meta.router)
 
 

@@ -8,7 +8,6 @@ from fastapi.responses import JSONResponse
 from app.config import get_settings
 from app.models import (
     ALL_ATTRIBUTES,
-    DETOXIFY_TO_PERSPECTIVE,
     PERSPECTIVE_TO_DETOXIFY,
     AnalyzeRequest,
     AnalyzeResponse,
@@ -17,9 +16,8 @@ from app.models import (
     SpanScore,
     SummaryScore,
 )
-from app.services import cache, classifier
+from app.services import classifier, scoring
 from app.services.detector import detect_language
-from app.services.metrics import CACHE_HITS, CACHE_MISSES
 from app.services.normalizer import normalize
 from app.services.spans import split_spans
 
@@ -53,22 +51,6 @@ def _thresholds(request: AnalyzeRequest, requested: list[str]) -> dict[str, floa
         config = requested_attrs.get(name) or {}
         thresholds[name] = float(config.get("scoreThreshold", default))
     return thresholds
-
-
-def _to_perspective_scores(
-    detoxify_scores: dict[str, float], requested: list[str]
-) -> dict[str, AttributeScore]:
-    """Map Detoxify scores to Perspective attribute scores, filtered to ``requested``."""
-    attribute_scores: dict[str, AttributeScore] = {}
-    for detox_key, value in detoxify_scores.items():
-        perspective_name = DETOXIFY_TO_PERSPECTIVE.get(detox_key)
-        # Filtering happens *after* inference: drop attributes not requested.
-        if perspective_name is None or perspective_name not in requested:
-            continue
-        attribute_scores[perspective_name] = AttributeScore(
-            summaryScore=SummaryScore(value=value)
-        )
-    return attribute_scores
 
 
 async def _attach_span_scores(
@@ -105,28 +87,21 @@ async def _attach_span_scores(
 )
 async def analyze(request: AnalyzeRequest):
     """Score a comment and return Perspective-compatible attribute scores."""
-    normalized = normalize(request.comment.text)
     requested = _resolve_requested(request)
 
-    # Cache is keyed on normalised text + the requested attribute set (summary only).
-    cache_key = cache.make_key(normalized, requested)
-    detoxify_scores = await cache.get_scores(cache_key)
+    try:
+        summary = await scoring.summary_scores(request.comment.text, requested)
+    except Exception as exc:  # noqa: BLE001 — surface as structured HTTP 500
+        logger.exception("Inference failed")
+        return JSONResponse(
+            status_code=500,
+            content=ErrorResponse(error="inference_failed", detail=str(exc)).model_dump(),
+        )
 
-    if detoxify_scores is None:
-        CACHE_MISSES.inc()
-        try:
-            detoxify_scores = await classifier.predict(normalized)
-        except Exception as exc:  # noqa: BLE001 — surface as structured HTTP 500
-            logger.exception("Inference failed")
-            return JSONResponse(
-                status_code=500,
-                content=ErrorResponse(error="inference_failed", detail=str(exc)).model_dump(),
-            )
-        await cache.set_scores(cache_key, detoxify_scores)
-    else:
-        CACHE_HITS.inc()
-
-    attribute_scores = _to_perspective_scores(detoxify_scores, requested)
+    attribute_scores = {
+        name: AttributeScore(summaryScore=SummaryScore(value=value))
+        for name, value in summary.items()
+    }
 
     if request.spanAnnotations:
         try:
