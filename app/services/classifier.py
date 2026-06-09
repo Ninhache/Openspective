@@ -81,8 +81,11 @@ async def predict(text: str) -> dict[str, float]:
     :param text: The (already normalised) text to score.
     :returns: Mapping of Detoxify attribute keys to probabilities in ``[0, 1]``.
     """
+    from app.services.metrics import INFERENCE_LATENCY
+
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(_executor, _predict_sync, text)
+    with INFERENCE_LATENCY.time():
+        return await loop.run_in_executor(_executor, _predict_sync, text)
 
 
 def shutdown() -> None:

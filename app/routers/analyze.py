@@ -17,6 +17,7 @@ from app.models import (
 )
 from app.services import cache, classifier
 from app.services.detector import detect_language
+from app.services.metrics import CACHE_HITS, CACHE_MISSES
 from app.services.normalizer import normalize
 
 logger = logging.getLogger("openspective.analyze")
@@ -64,6 +65,7 @@ async def analyze(request: AnalyzeRequest):
     detoxify_scores = await cache.get_scores(cache_key)
 
     if detoxify_scores is None:
+        CACHE_MISSES.inc()
         try:
             detoxify_scores = await classifier.predict(normalized)
         except Exception as exc:  # noqa: BLE001 — surface as structured HTTP 500
@@ -74,6 +76,8 @@ async def analyze(request: AnalyzeRequest):
                 content=ErrorResponse(error="inference_failed", detail=str(exc)).model_dump(),
             )
         await cache.set_scores(cache_key, detoxify_scores)
+    else:
+        CACHE_HITS.inc()
 
     attribute_scores = _to_perspective_scores(detoxify_scores, requested)
 
