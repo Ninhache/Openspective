@@ -34,9 +34,13 @@ async def chart_svg(
     attributes: str | None = Query(
         None, description="Comma-separated Perspective attribute names (default: all)."
     ),
+    style: str = Query(
+        "gauges", description="Chart style: gauges | radar | polar."
+    ),
 ):
-    """Return an SVG gauge chart of the comment's attribute scores."""
+    """Return an SVG chart of the comment's attribute scores."""
     requested = _resolve_attributes(attributes)
+    chart_style = style if style in chart.STYLES else "gauges"
     try:
         scores = await scoring.summary_scores(text, requested)
     except Exception as exc:  # noqa: BLE001 — surface as structured HTTP 500
@@ -47,7 +51,7 @@ async def chart_svg(
         )
 
     language = detect_language(text)[0]
-    svg = chart.render_svg(text, scores, language=language)
+    svg = chart.render_svg(text, scores, language=language, style=chart_style)
     # Short cache so embeds don't hammer inference, but stay reasonably fresh.
     return Response(
         content=svg,
