@@ -10,11 +10,15 @@ router, which maps them to an HTTP 500 with a structured error body.
 
 import asyncio
 import logging
+import os
 from concurrent.futures import ThreadPoolExecutor
 
 from app.config import VALID_MODEL_VARIANTS
 
 logger = logging.getLogger("openspective.classifier")
+
+# File extensions recognised as a fine-tuned Detoxify checkpoint.
+_CHECKPOINT_SUFFIXES = (".ckpt", ".pt", ".pth", ".bin")
 
 # Module-level singletons, initialised by ``load_model``.
 _model = None
@@ -24,28 +28,43 @@ _model_variant: str | None = None
 _executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="detoxify")
 
 
+def _is_checkpoint(variant: str) -> bool:
+    """Return True if ``variant`` refers to a fine-tuned checkpoint file rather than
+    one of the built-in variant names."""
+    return variant.endswith(_CHECKPOINT_SUFFIXES) or os.path.isfile(variant)
+
+
 def load_model(variant: str) -> None:
-    """Load the Detoxify model for ``variant`` into the module-level singleton.
+    """Load the Detoxify model into the module-level singleton.
 
     Called once from the application lifespan. Importing Detoxify is done lazily
     inside this function so the rest of the app (and the test suite) does not pull
     in torch unless a model is actually being loaded.
 
-    :param variant: One of ``original``, ``unbiased``, ``multilingual``.
-    :raises ValueError: If ``variant`` is not a known Detoxify variant.
+    ``variant`` is either a built-in variant name (``original``/``unbiased``/
+    ``multilingual``) or a path to a fine-tuned Detoxify checkpoint file
+    (``.ckpt``/``.pt``/...), enabling custom models via ``OPENSPECTIVE_MODEL``.
+
+    :param variant: A built-in variant name or a checkpoint file path.
+    :raises ValueError: If ``variant`` is neither a known variant nor a checkpoint.
     """
     global _model, _model_variant
 
-    if variant not in VALID_MODEL_VARIANTS:
-        raise ValueError(
-            f"Unknown model variant {variant!r}; expected one of {VALID_MODEL_VARIANTS}"
-        )
-
     from detoxify import Detoxify  # local import: avoids importing torch at module load
 
-    logger.info("Loading Detoxify model variant=%s", variant)
-    _model = Detoxify(variant)
-    _model_variant = variant
+    if _is_checkpoint(variant):
+        logger.info("Loading Detoxify from checkpoint=%s", variant)
+        _model = Detoxify(checkpoint=variant, device="cpu")
+        _model_variant = f"custom:{os.path.basename(variant)}"
+    elif variant in VALID_MODEL_VARIANTS:
+        logger.info("Loading Detoxify model variant=%s", variant)
+        _model = Detoxify(variant)
+        _model_variant = variant
+    else:
+        raise ValueError(
+            f"Unknown model {variant!r}; expected one of {VALID_MODEL_VARIANTS} "
+            f"or a path to a checkpoint file ({', '.join(_CHECKPOINT_SUFFIXES)})"
+        )
     logger.info("Detoxify model loaded")
 
 

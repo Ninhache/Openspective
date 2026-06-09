@@ -127,7 +127,7 @@ All settings are environment variables (prefix `OPENSPECTIVE_`):
 
 | Variable                   | Default                 | Description                                        |
 |----------------------------|-------------------------|----------------------------------------------------|
-| `OPENSPECTIVE_MODEL`       | `multilingual`          | Detoxify variant: `original`, `unbiased`, `multilingual` |
+| `OPENSPECTIVE_MODEL`       | `multilingual`          | Built-in variant (`original`/`unbiased`/`multilingual`) **or** a checkpoint path |
 | `OPENSPECTIVE_REDIS_URL`   | `redis://redis:6379`    | Redis connection URL for the score cache            |
 | `OPENSPECTIVE_CACHE_TTL`   | `3600`                  | Cache entry TTL in seconds                          |
 | `OPENSPECTIVE_LOG_LEVEL`   | `INFO`                  | `DEBUG` / `INFO` / `WARNING` / `ERROR`              |
@@ -138,6 +138,21 @@ All settings are environment variables (prefix `OPENSPECTIVE_`):
 | `OPENSPECTIVE_SCORE_THRESHOLD` | `0.0`             | Default min score for returned span scores          |
 
 See [`.env.example`](.env.example) for a starter file.
+
+### Custom / fine-tuned models
+
+Set `OPENSPECTIVE_MODEL` to a path to a fine-tuned Detoxify checkpoint
+(`.ckpt`/`.pt`/`.pth`/`.bin`) instead of a built-in variant name to serve your own weights:
+
+```yaml
+# docker-compose.yml (api service)
+environment:
+  - OPENSPECTIVE_MODEL=/models/my-finetuned.ckpt
+volumes:
+  - ./models:/models:ro
+```
+
+The model is loaded once at startup; `/v1/models` and `/healthz` report it as `custom:<filename>`.
 
 ### Authentication
 
@@ -229,9 +244,10 @@ The test suite mocks the classifier and Redis, so `pytest` runs fast and offline
 
 ---
 
-## Roadmap (v0.2)
+## Roadmap
 
-- Fine-tuned Detoxify checkpoint hook (load custom weights via `OPENSPECTIVE_MODEL` path).
+- Smaller runtime image (multi-stage build).
+- Richer language detection signals and per-language model routing.
 
 ## Security
 
