@@ -41,6 +41,12 @@ class Settings(BaseSettings):
     # keeps openspective a frictionless drop-in. Set OPENSPECTIVE_API_TOKENS to enable.
     api_tokens: str = ""  # OPENSPECTIVE_API_TOKENS
 
+    # Rate limiting (Redis-backed fixed window). ``rate_limit <= 0`` disables it
+    # (the default), keeping drop-in parity. When enabled, a client may make at most
+    # ``rate_limit`` requests per ``rate_limit_window`` seconds.
+    rate_limit: int = 0  # OPENSPECTIVE_RATE_LIMIT (max requests per window)
+    rate_limit_window: int = 60  # OPENSPECTIVE_RATE_LIMIT_WINDOW (seconds)
+
     @property
     def api_token_set(self) -> set[str]:
         """Return the configured Bearer tokens as a set (empty == auth disabled)."""

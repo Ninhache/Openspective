@@ -55,6 +55,22 @@ def client(monkeypatch):
 
 
 @pytest.fixture
+def rl_client(monkeypatch):
+    """Yield a TestClient with rate limiting enabled (limit 2 / 60s window)."""
+    from app.config import get_settings
+
+    monkeypatch.setenv("OPENSPECTIVE_RATE_LIMIT", "2")
+    monkeypatch.setenv("OPENSPECTIVE_RATE_LIMIT_WINDOW", "60")
+    get_settings.cache_clear()
+    _apply_common_mocks(monkeypatch)
+    from app.main import app
+
+    with TestClient(app) as test_client:
+        yield test_client
+    get_settings.cache_clear()
+
+
+@pytest.fixture
 def auth_client(monkeypatch):
     """Yield a TestClient with Bearer auth enabled (token == TEST_TOKEN)."""
     from app.config import get_settings
