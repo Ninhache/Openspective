@@ -57,3 +57,49 @@ def test_load_checkpoint_path(fake_detoxify):
 def test_load_unknown_variant_raises(fake_detoxify):
     with pytest.raises(ValueError):
         classifier.load_model("not-a-real-variant")
+
+
+class _WordModel:
+    """Fake model whose tokenizer counts words and whose predict flags 'toxic'.
+
+    Lets us exercise the chunk-and-pool path with a tiny window and no torch.
+    """
+
+    def __init__(self):
+        self.calls: list[str] = []
+
+    def tokenizer(self, text, add_special_tokens=True):
+        return {"input_ids": text.split()}
+
+    def predict(self, text):
+        self.calls.append(text)
+        return {"toxicity": 0.99 if "toxic" in text else 0.01}
+
+
+@pytest.fixture
+def word_model(monkeypatch):
+    """Install the word-counting fake model with a tiny (5-token) window."""
+    model = _WordModel()
+    monkeypatch.setattr(classifier, "_model", model)
+    monkeypatch.setattr(classifier, "MODEL_WINDOW", 5)
+    return model
+
+
+def test_short_text_scored_in_a_single_pass(word_model):
+    """Text within the window scores directly — one predict call, no chunking."""
+    scores = classifier._predict_pooled_sync("you are clean here")
+    assert scores["toxicity"] == 0.01
+    assert len(word_model.calls) == 1
+
+
+def test_long_text_pools_toxic_tail_via_max(word_model):
+    """A toxic sentence past the window is recovered as the per-attribute max.
+
+    Without pooling this trailing sentence would be truncated and the score would
+    read ~clean; pooling over chunks must surface the 0.99.
+    """
+    # 18 words over a 5-token window; the toxic content is in the final sentence.
+    text = "all is calm and fine here. nothing wrong at all really. you are toxic now friend."
+    scores = classifier._predict_pooled_sync(text)
+    assert scores["toxicity"] == 0.99
+    assert len(word_model.calls) > 1  # proves it chunked rather than truncated

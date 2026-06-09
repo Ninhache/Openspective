@@ -30,6 +30,13 @@ INFERENCE_LATENCY = Histogram(
 CACHE_HITS = Counter("openspective_cache_hits_total", "Score cache hits.")
 CACHE_MISSES = Counter("openspective_cache_misses_total", "Score cache misses.")
 
+# How often a comment exceeded the model's token window and was scored by chunking
+# + pooling instead of a single pass (long-input observability).
+CHUNKED_REQUESTS = Counter(
+    "openspective_chunked_requests_total",
+    "Requests whose text exceeded the model window and was chunk-pooled.",
+)
+
 
 def render() -> tuple[bytes, str]:
     """Return the current metrics exposition and its content type.

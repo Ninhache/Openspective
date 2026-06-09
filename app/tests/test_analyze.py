@@ -110,6 +110,17 @@ def test_inference_failure_returns_structured_500(client, monkeypatch):
     assert "model exploded" in body["detail"]
 
 
+def test_oversize_text_rejected_with_400(client):
+    """Text beyond the size limit is rejected explicitly, not silently truncated."""
+    from app.config import get_settings
+
+    limit = get_settings().max_text_chars
+    resp = client.post(ANALYZE_URL, json={"comment": {"text": "a" * (limit + 1)}})
+    assert resp.status_code == 400
+    body = resp.json()
+    assert body["error"] == "text_too_large"
+
+
 def test_healthz(client):
     """Health endpoint reports ok and the model name."""
     resp = client.get("/healthz")

@@ -16,6 +16,7 @@ from app.models import (
     SpanScore,
     SummaryScore,
 )
+from app.routers.validation import oversize_response
 from app.services import classifier, scoring
 from app.services.detector import detect_language
 from app.services.normalizer import normalize
@@ -87,6 +88,8 @@ async def _attach_span_scores(
 )
 async def analyze(request: AnalyzeRequest):
     """Score a comment and return Perspective-compatible attribute scores."""
+    if (oversize := oversize_response(request.comment.text)) is not None:
+        return oversize
     requested = _resolve_requested(request)
 
     try:

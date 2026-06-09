@@ -62,6 +62,11 @@ class Settings(BaseSettings):
     # overrides this. 0.0 (default) returns all spans.
     score_threshold: float = 0.0  # OPENSPECTIVE_SCORE_THRESHOLD
 
+    # Maximum comment length (characters). Longer text is rejected with HTTP 400 rather
+    # than silently truncated or scored over many chunks. Default mirrors Google
+    # Perspective's comment size limit (20480 bytes) for drop-in parity.
+    max_text_chars: int = 20480  # OPENSPECTIVE_MAX_TEXT_CHARS
+
     @property
     def api_token_set(self) -> set[str]:
         """Return the configured Bearer tokens as a set (empty == auth disabled)."""

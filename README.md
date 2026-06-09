@@ -119,6 +119,21 @@ Notes:
 - Span scoring runs one inference **per span**, so it is more expensive than a summary-only call and
   is **not cached**.
 
+### Long comments
+
+The underlying models have a **512-token** input window. A naïve call truncates anything past it
+*silently* — so a long comment with a toxic ending would score as clean. openspective avoids this:
+
+- Comments **within** the window are scored in a single pass (the common case — no overhead).
+- Comments **beyond** the window are split into sentences, each is scored, and the summary is the
+  **maximum** across them — so a toxic passage anywhere in a long comment still surfaces. Measured:
+  a toxic sentence buried after ~720 benign tokens goes from `0.0006` (truncated) to `0.9959` (pooled).
+- Comments longer than `OPENSPECTIVE_MAX_TEXT_CHARS` (default `20480`, mirroring Perspective's limit)
+  are rejected with **HTTP 400** rather than truncated or scored over an unbounded number of chunks.
+
+The long-input path costs one inference per sentence; the `openspective_chunked_requests_total` metric
+counts how often it fires. Reproduce the comparison with [`scripts/experiment_chunking.py`](scripts/experiment_chunking.py).
+
 ### Score chart (SVG)
 
 `GET /chart?text=...` returns an SVG of circular gauges — one per attribute, percentage in the
@@ -177,6 +192,7 @@ All settings are environment variables (prefix `OPENSPECTIVE_`):
 | `OPENSPECTIVE_RATE_LIMIT`  | `0`                     | Max requests per window; `0` disables rate limiting |
 | `OPENSPECTIVE_RATE_LIMIT_WINDOW` | `60`              | Rate-limit window length in seconds                 |
 | `OPENSPECTIVE_SCORE_THRESHOLD` | `0.0`             | Default min score for returned span scores          |
+| `OPENSPECTIVE_MAX_TEXT_CHARS` | `20480`            | Max comment length; longer text → HTTP 400 (mirrors Perspective) |
 | `OPENSPECTIVE_DEV_MODE`    | `false`                 | Dev mode: DEBUG logs + permissive CORS + docs        |
 
 See [`.env.example`](.env.example) for a starter file.
