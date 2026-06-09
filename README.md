@@ -3,6 +3,7 @@
 > Self-hosted, open-source, drop-in replacement for the Google Perspective API — toxicity scoring over a REST API you control.
 
 [![CI](https://github.com/Ninhache/Openspective/actions/workflows/ci.yml/badge.svg)](https://github.com/Ninhache/Openspective/actions/workflows/ci.yml)
+[![Container](https://img.shields.io/badge/ghcr.io-openspective-2496ed?logo=docker&logoColor=white)](https://github.com/Ninhache/Openspective/pkgs/container/openspective)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Google's [Perspective API](https://perspectiveapi.com/) is **sunsetting in December 2026**.
@@ -19,6 +20,15 @@ powered by the [Detoxify](https://github.com/unitaryai/detoxify) model (XLM-RoBE
 ---
 
 ## Quick start
+
+**Use the prebuilt image** (no build, published on GHCR):
+
+```bash
+docker run -p 8080:8080 ghcr.io/ninhache/openspective:latest
+```
+
+That's enough to start scoring (Redis is optional — the cache degrades gracefully without it). For
+the full stack with Redis, **build from source** with Compose:
 
 ```bash
 git clone https://github.com/Ninhache/Openspective.git
@@ -300,8 +310,8 @@ variant to keep reloads quick. Leave dev mode **off in production** (CORS would 
 
 ## Roadmap
 
-- Smaller runtime image (multi-stage build).
-- Richer language detection signals and per-language model routing.
+- Demo web UI (live chart) and ready-made client snippets.
+- Batch scoring + a `comments:suggestscore` feedback endpoint.
 
 ## Security
 
