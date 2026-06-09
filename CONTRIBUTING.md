@@ -10,6 +10,7 @@ git clone https://github.com/Ninhache/Openspective.git
 cd Openspective
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
+pre-commit install   # runs `ruff check` on staged files before each commit (matches CI)
 ```
 
 The test suite stubs out the Detoxify model and Redis, so you can run it without downloading

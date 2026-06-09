@@ -1,0 +1,10 @@
+# Pre-commit hooks. Install once per clone:  pre-commit install
+#
+# Mirrors CI (.github/workflows/ci.yml runs `ruff check .`) so lint errors are caught
+# locally before they reach CI. Crucially this lints across the whole repo (scripts/,
+# tests, etc.) — not just app/ — which is how a B905 in scripts/ slipped past once.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.16
+    hooks:
+      - id: ruff-check
