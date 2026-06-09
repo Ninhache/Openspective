@@ -96,8 +96,31 @@ All settings are environment variables (prefix `OPENSPECTIVE_`):
 | `OPENSPECTIVE_CACHE_TTL`   | `3600`                  | Cache entry TTL in seconds                          |
 | `OPENSPECTIVE_LOG_LEVEL`   | `INFO`                  | `DEBUG` / `INFO` / `WARNING` / `ERROR`              |
 | `OPENSPECTIVE_WORKERS`     | `1`                     | Worker count (informational; set in your runner)    |
+| `OPENSPECTIVE_API_TOKENS`  | _(empty)_               | Comma-separated Bearer tokens; empty disables auth  |
 
 See [`.env.example`](.env.example) for a starter file.
+
+### Authentication
+
+Authentication is **off by default** so openspective is a frictionless drop-in. To require
+auth, set `OPENSPECTIVE_API_TOKENS` to one or more comma-separated tokens:
+
+```bash
+OPENSPECTIVE_API_TOKENS=tok_abc123,tok_def456
+```
+
+Clients then send a Bearer token on the analyze endpoint:
+
+```bash
+curl -X POST http://localhost:8080/v1alpha1/comments:analyze \
+  -H "Authorization: Bearer tok_abc123" \
+  -H "Content-Type: application/json" \
+  -d '{ "comment": { "text": "hi" } }'
+```
+
+Operational endpoints (`/healthz`, `/readyz`, `/metrics`, `/v1/models`) stay unauthenticated so
+health probes and metric scrapers can always reach them. Invalid/missing tokens return a structured
+`401 {"error":"unauthorized","detail":"..."}`.
 
 ---
 
@@ -153,7 +176,7 @@ The test suite mocks the classifier and Redis, so `pytest` runs fast and offline
 
 ## Roadmap (v0.2)
 
-- Optional Bearer-token authentication + rate limiting.
+- Rate limiting (per-token / per-IP).
 - Span / per-sentence scores.
 - Fine-tuning hooks and configurable score thresholds.
 

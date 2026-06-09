@@ -37,6 +37,14 @@ class Settings(BaseSettings):
     cache_ttl: int = 3600  # OPENSPECTIVE_CACHE_TTL (seconds)
     log_level: str = "INFO"  # OPENSPECTIVE_LOG_LEVEL
     workers: int = 1  # OPENSPECTIVE_WORKERS
+    # Comma-separated Bearer tokens. Empty (default) disables auth entirely, which
+    # keeps openspective a frictionless drop-in. Set OPENSPECTIVE_API_TOKENS to enable.
+    api_tokens: str = ""  # OPENSPECTIVE_API_TOKENS
+
+    @property
+    def api_token_set(self) -> set[str]:
+        """Return the configured Bearer tokens as a set (empty == auth disabled)."""
+        return {token.strip() for token in self.api_tokens.split(",") if token.strip()}
 
 
 @lru_cache

@@ -3,20 +3,21 @@
 Wires up logging, loads the Detoxify model once via the lifespan context, and
 registers the analyze + meta routers.
 
-TODO (v0.2): add optional Bearer-token authentication. v0.1 intentionally ships
-without auth so it is a frictionless drop-in for the (also unauthenticated for
-self-hosters) Perspective replacement use case.
+Bearer-token authentication is optional and disabled by default (see app.security);
+set ``OPENSPECTIVE_API_TOKENS`` to require it on the analyze endpoint.
 """
 
 import logging
 import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
+from fastapi.responses import JSONResponse
 
 from app import __version__
 from app.config import get_settings
 from app.routers import analyze, meta
+from app.security import AuthError, require_auth
 from app.services import cache, classifier
 from app.services.metrics import REQUEST_COUNT, REQUEST_LATENCY
 
@@ -53,8 +54,19 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.include_router(analyze.router)
+# Auth guards the analyze endpoint only; operational routes stay open for probes.
+app.include_router(analyze.router, dependencies=[Depends(require_auth)])
 app.include_router(meta.router)
+
+
+@app.exception_handler(AuthError)
+async def _auth_error_handler(request: Request, exc: AuthError) -> JSONResponse:
+    """Render auth failures in the same structured shape as other errors."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": "unauthorized", "detail": exc.detail},
+        headers=exc.headers,
+    )
 
 
 def _route_label(request: Request) -> str:

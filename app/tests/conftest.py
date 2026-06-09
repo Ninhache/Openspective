@@ -18,13 +18,14 @@ FAKE_SCORES = {
     "identity_attack": 0.05,
 }
 
+# Token used by the authenticated-client fixture.
+TEST_TOKEN = "test-secret-token"
 
-@pytest.fixture
-def client(monkeypatch):
-    """Yield a TestClient with the model and Redis cache stubbed out."""
+
+def _apply_common_mocks(monkeypatch):
+    """Stub the model and Redis cache so tests run offline and fast."""
     from app.services import cache, classifier
 
-    # Avoid importing torch / downloading weights during the lifespan startup.
     monkeypatch.setattr(classifier, "load_model", lambda variant: None)
     monkeypatch.setattr(classifier, "model_name", lambda: "multilingual")
 
@@ -33,7 +34,6 @@ def client(monkeypatch):
 
     monkeypatch.setattr(classifier, "predict", _fake_predict)
 
-    # Disable the cache entirely: always a miss, set is a no-op.
     async def _miss(key):
         return None
 
@@ -43,7 +43,28 @@ def client(monkeypatch):
     monkeypatch.setattr(cache, "get_scores", _miss)
     monkeypatch.setattr(cache, "set_scores", _noop)
 
+
+@pytest.fixture
+def client(monkeypatch):
+    """Yield a TestClient with the model and Redis cache stubbed out (no auth)."""
+    _apply_common_mocks(monkeypatch)
     from app.main import app
 
     with TestClient(app) as test_client:
         yield test_client
+
+
+@pytest.fixture
+def auth_client(monkeypatch):
+    """Yield a TestClient with Bearer auth enabled (token == TEST_TOKEN)."""
+    from app.config import get_settings
+
+    monkeypatch.setenv("OPENSPECTIVE_API_TOKENS", TEST_TOKEN)
+    # Settings are cached; clear so the env var is picked up, and clear again on teardown.
+    get_settings.cache_clear()
+    _apply_common_mocks(monkeypatch)
+    from app.main import app
+
+    with TestClient(app) as test_client:
+        yield test_client
+    get_settings.cache_clear()
