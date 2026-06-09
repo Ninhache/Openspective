@@ -40,6 +40,22 @@ def test_render_radar_is_single_svg_with_all_labels():
         assert name in svg
 
 
+def test_radar_does_not_collapse_when_mostly_zero():
+    """With a single high attribute and the rest 0, the radar polygon stays visible
+    (min radius offset) — its points are not all the centre."""
+    import re
+
+    svg = render_svg(
+        "x",
+        {"TOXICITY": 1.0, "INSULT": 0.0, "THREAT": 0.0, "OBSCENE": 0.0},
+        style="radar",
+    )
+    points = re.search(r'<polygon points="([^"]+)" fill="#', svg).group(1)
+    coords = {tuple(p.split(",")) for p in points.split()}
+    # More than one distinct vertex => the shape didn't collapse to a point.
+    assert len(coords) > 1
+
+
 def test_render_polar_uses_wedges():
     """The polar style emits one wedge (path) per attribute."""
     svg = render_svg("hi", {"TOXICITY": 0.9, "INSULT": 0.5}, style="polar")
