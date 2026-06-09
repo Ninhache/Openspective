@@ -1,0 +1,17 @@
+# Development override. Use together with the base compose file:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Enables dev mode (DEBUG logs + permissive CORS + docs), hot-reload, and bind-mounts
+# the source so edits are picked up without a rebuild. Uses the lighter `original`
+# model so reloads stay quick.
+services:
+  api:
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--reload"]
+    environment:
+      - OPENSPECTIVE_DEV_MODE=1
+      - OPENSPECTIVE_MODEL=original
+      - OPENSPECTIVE_REDIS_URL=redis://redis:6379
+    volumes:
+      # Live-mount the app source for hot-reload (read-only inside the container).
+      - ./app:/app/app:ro

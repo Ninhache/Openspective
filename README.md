@@ -153,6 +153,7 @@ All settings are environment variables (prefix `OPENSPECTIVE_`):
 | `OPENSPECTIVE_RATE_LIMIT`  | `0`                     | Max requests per window; `0` disables rate limiting |
 | `OPENSPECTIVE_RATE_LIMIT_WINDOW` | `60`              | Rate-limit window length in seconds                 |
 | `OPENSPECTIVE_SCORE_THRESHOLD` | `0.0`             | Default min score for returned span scores          |
+| `OPENSPECTIVE_DEV_MODE`    | `false`                 | Dev mode: DEBUG logs + permissive CORS + docs        |
 
 See [`.env.example`](.env.example) for a starter file.
 
@@ -258,6 +259,28 @@ pytest            # the test suite stubs out the model, so torch/detoxify aren't
 ```
 
 The test suite mocks the classifier and Redis, so `pytest` runs fast and offline without the model.
+
+### Dev mode
+
+For local iteration there's a dev mode (hot-reload + DEBUG logs + permissive CORS + Swagger docs):
+
+```bash
+./scripts/dev.sh            # uvicorn --reload on :8080, OPENSPECTIVE_DEV_MODE=1, model=original
+```
+
+Or with Docker:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+```
+
+`OPENSPECTIVE_DEV_MODE=1` turns on:
+- **DEBUG** logging,
+- permissive **CORS** (`Access-Control-Allow-Origin: *`) so a local frontend on another port can call the API,
+- Swagger UI at **`/docs`** (and ReDoc at `/redoc`).
+
+Hot-reload re-loads the model on each change, so dev mode defaults to the lighter `original`
+variant to keep reloads quick. Leave dev mode **off in production** (CORS would be wide open).
 
 ---
 
