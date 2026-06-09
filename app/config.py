@@ -28,7 +28,8 @@ class Settings(BaseSettings):
     )
 
     # The spec documents this env var as ``OPENSPECTIVE_MODEL`` (not
-    # ``OPENSPECTIVE_MODEL_VARIANT``); accept both via an alias.
+    # ``OPENSPECTIVE_MODEL_VARIANT``); accept both via an alias. The value is either
+    # a built-in variant name or a path to a fine-tuned Detoxify checkpoint file.
     model_variant: str = Field(
         default="multilingual",
         validation_alias=AliasChoices("OPENSPECTIVE_MODEL", "OPENSPECTIVE_MODEL_VARIANT"),
