@@ -97,6 +97,8 @@ All settings are environment variables (prefix `OPENSPECTIVE_`):
 | `OPENSPECTIVE_LOG_LEVEL`   | `INFO`                  | `DEBUG` / `INFO` / `WARNING` / `ERROR`              |
 | `OPENSPECTIVE_WORKERS`     | `1`                     | Worker count (informational; set in your runner)    |
 | `OPENSPECTIVE_API_TOKENS`  | _(empty)_               | Comma-separated Bearer tokens; empty disables auth  |
+| `OPENSPECTIVE_RATE_LIMIT`  | `0`                     | Max requests per window; `0` disables rate limiting |
+| `OPENSPECTIVE_RATE_LIMIT_WINDOW` | `60`              | Rate-limit window length in seconds                 |
 
 See [`.env.example`](.env.example) for a starter file.
 
@@ -121,6 +123,22 @@ curl -X POST http://localhost:8080/v1alpha1/comments:analyze \
 Operational endpoints (`/healthz`, `/readyz`, `/metrics`, `/v1/models`) stay unauthenticated so
 health probes and metric scrapers can always reach them. Invalid/missing tokens return a structured
 `401 {"error":"unauthorized","detail":"..."}`.
+
+### Rate limiting
+
+Rate limiting is **off by default**. Set `OPENSPECTIVE_RATE_LIMIT` (and optionally
+`OPENSPECTIVE_RATE_LIMIT_WINDOW`) to enable a Redis-backed fixed window:
+
+```bash
+OPENSPECTIVE_RATE_LIMIT=100          # 100 requests...
+OPENSPECTIVE_RATE_LIMIT_WINDOW=60    # ...per 60 seconds, per client
+```
+
+Clients are keyed by their Bearer token when present, otherwise by IP. Allowed responses carry
+`X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset` headers; exceeding the limit
+returns `429 {"error":"rate_limited","detail":"..."}` with a `Retry-After` header. If Redis is
+unavailable, the limiter **fails open** (requests are allowed) — the same graceful degradation as
+the cache.
 
 ---
 
@@ -176,7 +194,6 @@ The test suite mocks the classifier and Redis, so `pytest` runs fast and offline
 
 ## Roadmap (v0.2)
 
-- Rate limiting (per-token / per-IP).
 - Span / per-sentence scores.
 - Fine-tuning hooks and configurable score thresholds.
 

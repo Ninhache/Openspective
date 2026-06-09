@@ -17,8 +17,8 @@ from fastapi.responses import JSONResponse
 from app import __version__
 from app.config import get_settings
 from app.routers import analyze, meta
-from app.security import AuthError, require_auth
-from app.services import cache, classifier
+from app.security import AuthError, RateLimitError, rate_limit, require_auth
+from app.services import classifier, redis_client
 from app.services.metrics import REQUEST_COUNT, REQUEST_LATENCY
 
 
@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         classifier.shutdown()
-        await cache.close()
+        await redis_client.close()
 
 
 app = FastAPI(
@@ -54,8 +54,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Auth guards the analyze endpoint only; operational routes stay open for probes.
-app.include_router(analyze.router, dependencies=[Depends(require_auth)])
+# Auth + rate limiting guard the analyze endpoint only; operational routes stay
+# open for probes and scrapers.
+app.include_router(
+    analyze.router, dependencies=[Depends(require_auth), Depends(rate_limit)]
+)
 app.include_router(meta.router)
 
 
@@ -65,6 +68,16 @@ async def _auth_error_handler(request: Request, exc: AuthError) -> JSONResponse:
     return JSONResponse(
         status_code=exc.status_code,
         content={"error": "unauthorized", "detail": exc.detail},
+        headers=exc.headers,
+    )
+
+
+@app.exception_handler(RateLimitError)
+async def _rate_limit_error_handler(request: Request, exc: RateLimitError) -> JSONResponse:
+    """Render rate-limit rejections as a structured 429."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": "rate_limited", "detail": exc.detail},
         headers=exc.headers,
     )
 
