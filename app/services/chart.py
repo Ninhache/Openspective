@@ -26,6 +26,8 @@ _PAD = 24
 
 # --- Radar / polar geometry. -------------------------------------------------
 _R = 130  # outer radius of radar/polar plot
+_R_MIN = 18  # inner base radius: a score of 0 maps here (not the centre) so a single
+# high attribute still draws a visible shape instead of collapsing to a point.
 _PLOT_W = 520  # canvas width for radar/polar
 _LABEL_GAP = 18  # distance from outer ring to axis labels
 _GRID_LEVELS = (0.25, 0.5, 0.75, 1.0)
@@ -133,8 +135,14 @@ def _axis_angles(n: int) -> list[float]:
     return [-90 + i * 360 / n for i in range(n)]
 
 
+def _radar_radius(value: float) -> float:
+    """Map a score in ``[0, 1]`` to a radius, offset by ``_R_MIN`` so a 0 still sits
+    on a visible inner ring rather than the exact centre."""
+    return _R_MIN + max(0.0, min(1.0, value)) * (_R - _R_MIN)
+
+
 def _radar_body(items: list[tuple[str, float]]) -> tuple[int, int, list[str]]:
-    """Render a single radar/spider chart over all attributes."""
+    """Render a single round radar/spider chart over all attributes."""
     n = len(items)
     width = _PLOT_W
     cx = width / 2
@@ -143,12 +151,16 @@ def _radar_body(items: list[tuple[str, float]]) -> tuple[int, int, list[str]]:
     angles = _axis_angles(n)
     parts: list[str] = []
 
-    # Concentric polygonal grid + ring labels.
+    # Round grid: concentric reference circles (incl. the inner base ring at 0%).
+    parts.append(
+        f'  <circle cx="{cx}" cy="{cy}" r="{_R_MIN:.1f}" fill="none" '
+        f'stroke="{_GRID}" stroke-width="1"/>'
+    )
     for level in _GRID_LEVELS:
-        pts = " ".join(
-            f"{x:.1f},{y:.1f}" for x, y in (_point(cx, cy, a, _R * level) for a in angles)
+        parts.append(
+            f'  <circle cx="{cx}" cy="{cy}" r="{_radar_radius(level):.1f}" fill="none" '
+            f'stroke="{_GRID}" stroke-width="1"/>'
         )
-        parts.append(f'  <polygon points="{pts}" fill="none" stroke="{_GRID}" stroke-width="1"/>')
     # Axis spokes.
     for a in angles:
         x, y = _point(cx, cy, a, _R)
@@ -162,7 +174,9 @@ def _radar_body(items: list[tuple[str, float]]) -> tuple[int, int, list[str]]:
     color = _color(headline)
     data_pts = " ".join(
         f"{x:.1f},{y:.1f}"
-        for x, y in (_point(cx, cy, a, _R * v) for a, (_, v) in zip(angles, items, strict=True))
+        for x, y in (
+            _point(cx, cy, a, _radar_radius(v)) for a, (_, v) in zip(angles, items, strict=True)
+        )
     )
     parts.append(
         f'  <polygon points="{data_pts}" fill="{color}" fill-opacity="0.30" '
@@ -171,7 +185,7 @@ def _radar_body(items: list[tuple[str, float]]) -> tuple[int, int, list[str]]:
 
     # Vertices + labels (attribute name on top line, percentage below).
     for a, (label, value) in zip(angles, items, strict=True):
-        vx, vy = _point(cx, cy, a, _R * value)
+        vx, vy = _point(cx, cy, a, _radar_radius(value))
         lx, ly = _point(cx, cy, a, _R + _LABEL_GAP)
         anchor = _anchor(lx, cx)
         parts.append(f'  <circle cx="{vx:.1f}" cy="{vy:.1f}" r="3" fill="{color}"/>')
