@@ -54,22 +54,34 @@ def test_unknown_requested_attribute_ignored(client):
     assert set(resp.json()["attributeScores"].keys()) == {"TOXICITY"}
 
 
-def test_languages_passthrough(client):
-    """Provided languages are echoed into languages and detectedLanguages."""
+def test_languages_override_detection(client):
+    """A caller-supplied languages value overrides what we report as languages."""
     resp = client.post(
         ANALYZE_URL,
-        json={"comment": {"text": "hola"}, "languages": ["es"]},
+        json={"comment": {"text": "this is clearly english text"}, "languages": ["es"]},
     )
     body = resp.json()
+    # languages is the caller's override...
     assert body["languages"] == ["es"]
-    assert body["detectedLanguages"] == ["es"]
+    # ...but detectedLanguages still reflects what we actually detected.
+    assert body["detectedLanguages"] == ["en"]
 
 
-def test_detected_languages_unknown_when_absent(client):
-    """When languages is omitted, detectedLanguages falls back to ['unknown']."""
-    resp = client.post(ANALYZE_URL, json={"comment": {"text": "hi"}})
+def test_languages_autodetected_when_absent(client):
+    """When languages is omitted, both fields come from auto-detection."""
+    resp = client.post(
+        ANALYZE_URL,
+        json={"comment": {"text": "this is a clearly english sentence"}},
+    )
     body = resp.json()
-    assert body["languages"] == []
+    assert body["languages"] == ["en"]
+    assert body["detectedLanguages"] == ["en"]
+
+
+def test_undetectable_language_falls_back_to_unknown(client):
+    """Text with no detectable language degrades to ['unknown']."""
+    resp = client.post(ANALYZE_URL, json={"comment": {"text": "12345 !!!"}})
+    body = resp.json()
     assert body["detectedLanguages"] == ["unknown"]
 
 

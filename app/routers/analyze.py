@@ -16,6 +16,7 @@ from app.models import (
     SummaryScore,
 )
 from app.services import cache, classifier
+from app.services.detector import detect_language
 from app.services.normalizer import normalize
 
 logger = logging.getLogger("openspective.analyze")
@@ -76,10 +77,10 @@ async def analyze(request: AnalyzeRequest):
 
     attribute_scores = _to_perspective_scores(detoxify_scores, requested)
 
-    # Language handling: pass through the request's ``languages`` if provided.
-    # Detection is not yet implemented (TODO: langdetect in v0.2).
-    languages = request.languages or []
-    detected = request.languages if request.languages else ["unknown"]
+    # Language handling: auto-detect from the original text, but let a caller-supplied
+    # ``languages`` value override what we report as the effective languages.
+    detected = detect_language(request.comment.text)
+    languages = request.languages if request.languages else detected
 
     return AnalyzeResponse(
         attributeScores=attribute_scores,
