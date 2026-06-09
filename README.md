@@ -197,6 +197,12 @@ The test suite mocks the classifier and Redis, so `pytest` runs fast and offline
 - Span / per-sentence scores.
 - Fine-tuning hooks and configurable score thresholds.
 
+## Security
+
+Found a vulnerability? Please report it privately — see [SECURITY.md](SECURITY.md). Hardening tips
+for internet-facing deployments are in that file and in the [Authentication](#authentication) and
+[Rate limiting](#rate-limiting) sections above.
+
 ## License
 
 [MIT](LICENSE) © Ninhache
