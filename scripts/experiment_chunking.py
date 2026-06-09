@@ -57,7 +57,7 @@ def aggregate(model, text):
     mx = max(scores)
     mean = sum(scores) / len(scores)
     total_w = sum(weights) or 1
-    wmean = sum(s * w for s, w in zip(scores, weights)) / total_w
+    wmean = sum(s * w for s, w in zip(scores, weights, strict=True)) / total_w
     return {
         "tokens": sum(weights),
         "n_chunks": len(chunks),
