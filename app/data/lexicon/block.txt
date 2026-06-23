@@ -1,0 +1,57 @@
+# Block tier — strong profanity / slurs. A match here => decision "block".
+# One term per line, lowercased, post-normalization (homoglyph/leet folded).
+# Default match = whole token. Trailing '*' = substring match (catches concatenations
+# like fuckankama); use only for stems that ~never occur inside innocent words.
+# This is a SEED list — grow it from the human review loop. Keep precision high.
+
+# --- EN ---
+fuck*
+bitch*
+cunt*
+asshole*
+faggot*
+nigger*
+nigga*
+motherfucker*
+dickhead*
+whore
+slut
+rapist
+
+# --- FR ---
+pute
+putain
+salope
+salaud
+connard
+conasse
+encule
+encule
+encules
+encules
+couille
+couilles
+tafiole
+pedale
+ntm
+fdp
+
+# --- ES ---
+puta
+mierda
+cabron
+gilipollas*
+polla
+joder
+maricon
+verga
+pendejo
+cono
+
+# --- PT ---
+caralho*
+foder
+buceta
+viado
+piroca
+corno

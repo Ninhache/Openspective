@@ -1,0 +1,16 @@
+# Flag tier — soft / borderline. A match here (and no block match) => decision "flag"
+# (send to a human moderator rather than auto-rejecting). Same format as block.txt.
+# Derived from Wakfuli review labels: 'shit' (allow in "bullshit", flag in usernames),
+# 'tamere', 'porra' landed here as borderline rather than hard blocks.
+
+# --- EN ---
+crap
+# 'shit' is token-only (not 'shit*'): substring flagged legit "bullshit" build names.
+shit
+
+# --- FR ---
+tamere
+merde
+
+# --- PT ---
+porra
