@@ -67,6 +67,16 @@ class Settings(BaseSettings):
     # Perspective's comment size limit (20480 bytes) for drop-in parity.
     max_text_chars: int = 20480  # OPENSPECTIVE_MAX_TEXT_CHARS
 
+    # Moderation (/v1/moderate). Directory of the tiered lexicon files (block/flag/
+    # allow .txt); empty uses the bundled default under app/data/lexicon.
+    lexicon_dir: str = ""  # OPENSPECTIVE_LEXICON_DIR
+    # When the lexicon is clean, fall back to the Detoxify model for text at least this
+    # many characters long (notes-like). Keeps short usernames lexicon-only (fast).
+    # 0 disables the ML fallback entirely (pure-lexicon "static" mode).
+    moderate_ml_min_chars: int = 40  # OPENSPECTIVE_MODERATE_ML_MIN_CHARS
+    # ML score at/above which the fallback flags text for human review.
+    moderate_ml_threshold: float = 0.8  # OPENSPECTIVE_MODERATE_ML_THRESHOLD
+
     @property
     def api_token_set(self) -> set[str]:
         """Return the configured Bearer tokens as a set (empty == auth disabled)."""

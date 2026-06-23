@@ -134,6 +134,31 @@ The underlying models have a **512-token** input window. A naïve call truncates
 The long-input path costs one inference per sentence; the `openspective_chunked_requests_total` metric
 counts how often it fires. Reproduce the comparison with [`scripts/experiment_chunking.py`](scripts/experiment_chunking.py).
 
+### Moderation (`/v1/moderate`)
+
+A higher-level endpoint that returns a single **allow / flag / block** verdict — built for
+short fields (usernames, slugs, titles) where a toxicity model alone underperforms. It
+combines two layers:
+
+1. **A deterministic, tiered lexicon** (primary) — normalize → tokenize → match curated
+   FR/EN/ES/PT word lists in `app/data/lexicon/` (`block.txt` / `flag.txt` / `allow.txt`).
+   Edit those files (or point `OPENSPECTIVE_LEXICON_DIR` elsewhere) to grow the lists with
+   no code change. Matching is whole-token by default; a trailing `*` opts a term into
+   substring matching (catches `fuck*` → `fuckankama`). The allowlist holds domain vocab
+   (e.g. `zob` = the Zobal class) so game terms never trip it.
+2. **The Detoxify model** (fallback) — runs only when the lexicon is clean *and* the text
+   is long enough to be notes-like, flagging high-scoring content for review.
+
+```bash
+curl -X POST http://localhost:8080/v1/moderate \
+  -H "Content-Type: application/json" \
+  -d '{"text": "fuckankama", "context": "username"}'
+# -> {"decision":"block","reasons":["fuck"],"tier":"block"}
+```
+
+The lexicon ships as a **seed** — see [`docs/specs/moderation.md`](docs/specs/moderation.md)
+for the design and how to extend it.
+
 ### Score chart (SVG)
 
 `GET /chart?text=...` returns an SVG of circular gauges — one per attribute, percentage in the
@@ -169,6 +194,7 @@ The chart endpoint runs inference, so it is covered by auth + rate limiting when
 | Method | Path                              | Description                                  |
 |--------|-----------------------------------|----------------------------------------------|
 | POST   | `/v1alpha1/comments:analyze`      | Score a comment (Perspective-compatible)     |
+| POST   | `/v1/moderate`                    | One allow/flag/block verdict (lexicon + ML)  |
 | GET    | `/healthz`                        | Liveness probe (always 200 while serving)    |
 | GET    | `/readyz`                         | Readiness probe (200 only once model loaded) |
 | GET    | `/chart`                          | SVG gauge chart of a comment's scores        |
@@ -193,6 +219,9 @@ All settings are environment variables (prefix `OPENSPECTIVE_`):
 | `OPENSPECTIVE_RATE_LIMIT_WINDOW` | `60`              | Rate-limit window length in seconds                 |
 | `OPENSPECTIVE_SCORE_THRESHOLD` | `0.0`             | Default min score for returned span scores          |
 | `OPENSPECTIVE_MAX_TEXT_CHARS` | `20480`            | Max comment length; longer text → HTTP 400 (mirrors Perspective) |
+| `OPENSPECTIVE_LEXICON_DIR` | _(bundled)_             | Override dir for the `/v1/moderate` lexicon files     |
+| `OPENSPECTIVE_MODERATE_ML_MIN_CHARS` | `40`          | Min length to run the ML fallback in `/v1/moderate` (0 = lexicon-only) |
+| `OPENSPECTIVE_MODERATE_ML_THRESHOLD` | `0.8`         | ML score at/above which `/v1/moderate` flags text     |
 | `OPENSPECTIVE_DEV_MODE`    | `false`                 | Dev mode: DEBUG logs + permissive CORS + docs        |
 
 See [`.env.example`](.env.example) for a starter file.

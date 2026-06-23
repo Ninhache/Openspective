@@ -51,6 +51,10 @@ Issues = "https://github.com/Ninhache/Openspective/issues"
 [tool.setuptools.packages.find]
 include = ["app*"]
 
+[tool.setuptools.package-data]
+# Ship the moderation lexicon text files inside the package (non-Python data).
+"app.data.lexicon" = ["*.txt"]
+
 [tool.pytest.ini_options]
 testpaths = ["app/tests"]
 addopts = "-q"

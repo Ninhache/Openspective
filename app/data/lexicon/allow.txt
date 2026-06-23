@@ -1,0 +1,37 @@
+# Allowlist — tokens that must NEVER contribute a match (overrides block/flag).
+# Two jobs: (1) Wakfu domain vocab that looks rude but isn't, (2) known false-positive
+# carriers for any substring ('*') terms. Whole-token match. Grow as FPs surface.
+
+# --- Wakfu domain vocab (from Wakfuli review: these are class/game terms, not insults) ---
+zob
+zobal
+batard
+batards
+
+# --- Wakfu class names (never profanity, listed so future stems can't trip them) ---
+iop
+cra
+sram
+eniripsa
+ecaflip
+enutrof
+sadida
+osamodas
+feca
+xelor
+sacrieur
+pandawa
+roublard
+zobal
+steamer
+eliotrope
+huppermage
+ouginak
+forgelance
+masqueraime
+
+# --- Known false-positive carriers (innocent words containing a flagged substring) ---
+escalope
+drapeau
+reputation
+dispute

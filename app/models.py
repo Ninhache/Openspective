@@ -88,3 +88,21 @@ class ErrorResponse(BaseModel):
 
     error: str
     detail: str
+
+
+class ModerateRequest(BaseModel):
+    """A ``/v1/moderate`` request: a single string and an optional field hint."""
+
+    text: str
+    # Optional hint about where the text comes from (username/slug/build_name/notes…).
+    # Currently informational; reserved for per-context policy tuning.
+    context: str | None = None
+
+
+class ModerateResponse(BaseModel):
+    """A moderation verdict: one allow/flag/block decision plus the evidence."""
+
+    decision: Literal["allow", "flag", "block"]
+    reasons: list[str] = Field(default_factory=list)  # matched lexicon terms / "ml"
+    tier: str | None = None  # "block" | "flag" | "ml" | None
+    mlScore: float | None = None  # noqa: N815 — set only when the ML fallback ran

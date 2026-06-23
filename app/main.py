@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 
 from app import __version__
 from app.config import get_settings
-from app.routers import analyze, chart, meta
+from app.routers import analyze, chart, meta, moderate
 from app.security import AuthError, RateLimitError, rate_limit, require_auth
 from app.services import classifier, redis_client
 from app.services.metrics import REQUEST_COUNT, REQUEST_LATENCY
@@ -62,6 +62,7 @@ app = FastAPI(
 _scoring_guards = [Depends(require_auth), Depends(rate_limit)]
 app.include_router(analyze.router, dependencies=_scoring_guards)
 app.include_router(chart.router, dependencies=_scoring_guards)
+app.include_router(moderate.router, dependencies=_scoring_guards)
 app.include_router(meta.router)
 
 

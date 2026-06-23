@@ -42,3 +42,11 @@ htmlcov/
 .vscode/
 *.swp
 .DS_Store
+
+# Local moderation data — real user PII (usernames, build names). NEVER commit.
+/wakfuli_review.csv
+/users_usernames.csv
+/builds_names.csv
+*.local.csv
+/data/
+.~lock.*#
