@@ -53,12 +53,16 @@ def test_short_clean_text_skips_ml(client):
     assert "mlScore" not in body  # ML never ran
 
 
-def test_ml_high_score_blocks(client):
+def test_ml_high_score_blocks(client, monkeypatch):
     """Long, lexicon-clean text scored high by the model is blocked (>= block threshold)."""
-    text = "this is an ordinary looking sentence with no banned words in it at all"
-    resp = client.post(MODERATE_URL, json={"text": text})
+    from app.routers import moderate
+
+    async def _high(text, attrs):
+        return {a: 0.95 for a in attrs}
+
+    monkeypatch.setattr(moderate.scoring, "summary_scores", _high)
+    resp = client.post(MODERATE_URL, json={"text": "a clean long sentence with no bad words"})
     body = resp.json()
-    # fake classifier returns 0.92 >= block_threshold 0.9
     assert body["decision"] == "block"
     assert body["tier"] == "ml"
     assert body["mlScore"] >= 0.9
