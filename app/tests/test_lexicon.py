@@ -61,6 +61,19 @@ def test_token_matching_avoids_substring_false_positives():
     assert lexicon.evaluate("une longue dispute").decision == "allow"
 
 
+def test_accent_folding_matches_de_accented_entry():
+    """Accented profanity matches its de-accented lexicon entry (salopé -> salope)."""
+    assert lexicon.evaluate("salopé").decision == "block"
+    assert lexicon.evaluate("sale salopé").decision == "block"
+
+
+def test_score_is_set_per_tier():
+    """Block hits score 1.0, flag hits 0.6, clean text 0.0."""
+    assert lexicon.evaluate("salope").score == 1.0
+    assert lexicon.evaluate("shit").score == 0.6
+    assert lexicon.evaluate("Mathius").score == 0.0
+
+
 def test_spanish_con_is_not_profanity():
     """'con' (Spanish 'with') was a false positive in review — not in the lexicon."""
     assert lexicon.evaluate("latita con botas").decision == "allow"
