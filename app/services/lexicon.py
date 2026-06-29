@@ -18,6 +18,7 @@ innocent words.
 
 import logging
 import re
+import unicodedata
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
@@ -26,6 +27,22 @@ from app.config import get_settings
 from app.services.normalizer import normalize
 
 logger = logging.getLogger("openspective.lexicon")
+
+# Score assigned to a lexicon hit per tier, so /moderate can fold lexicon + ML into a
+# single number. A clear slur is a certainty (1.0); a soft/borderline term sits in the
+# review band.
+_BLOCK_SCORE = 1.0
+_FLAG_SCORE = 0.6
+
+
+def _fold_accents(text: str) -> str:
+    """Strip diacritics so accented profanity matches its de-accented lexicon entry.
+
+    ``pédé`` -> ``pede``, ``enculé`` -> ``encule``. Applied to both the lexicon terms
+    and the input so the two always meet. NFKD splits a letter from its combining
+    accent; we drop the combining marks.
+    """
+    return "".join(c for c in unicodedata.normalize("NFKD", text) if not unicodedata.combining(c))
 
 # Default lexicon directory (this file's sibling ``../data/lexicon``).
 _DEFAULT_DIR = Path(__file__).resolve().parent.parent / "data" / "lexicon"
@@ -57,6 +74,7 @@ class Verdict:
     decision: str = "allow"  # block | flag | allow
     tier: str | None = None  # which tier fired (block/flag), or None
     reasons: list[str] = field(default_factory=list)  # matched terms
+    score: float = 0.0  # severity in [0, 1] (block tier = 1.0, flag tier = 0.6)
 
 
 def tokenize(normalized: str) -> set[str]:
@@ -75,7 +93,7 @@ def _parse_file(path: Path) -> tuple[set[str], set[str]]:
     if not path.exists():
         return tokens, substrings
     for raw in path.read_text(encoding="utf-8").splitlines():
-        line = raw.strip().lower()
+        line = _fold_accents(raw.strip().lower())
         if not line or line.startswith("#"):
             continue
         if line.endswith("*"):
@@ -150,15 +168,20 @@ def evaluate(text: str) -> Verdict:
     :returns: A :class:`Verdict` with decision, tier, and matched terms.
     """
     lex = get_lexicon()
-    norm = normalize(text)
+    # Fold accents so 'pédé' matches the de-accented 'pede' entry (and vice versa).
+    norm = _fold_accents(normalize(text))
     tokens = tokenize(norm)
 
     block_hits = _matches(tokens, norm, lex.block_tokens, lex.block_substrings, lex.allow)
     if block_hits:
-        return Verdict(decision="block", tier="block", reasons=sorted(set(block_hits)))
+        return Verdict(
+            decision="block", tier="block", reasons=sorted(set(block_hits)), score=_BLOCK_SCORE
+        )
 
     flag_hits = _matches(tokens, norm, lex.flag_tokens, lex.flag_substrings, lex.allow)
     if flag_hits:
-        return Verdict(decision="flag", tier="flag", reasons=sorted(set(flag_hits)))
+        return Verdict(
+            decision="flag", tier="flag", reasons=sorted(set(flag_hits)), score=_FLAG_SCORE
+        )
 
-    return Verdict(decision="allow")
+    return Verdict(decision="allow", score=0.0)

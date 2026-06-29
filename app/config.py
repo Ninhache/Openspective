@@ -71,11 +71,14 @@ class Settings(BaseSettings):
     # allow .txt); empty uses the bundled default under app/data/lexicon.
     lexicon_dir: str = ""  # OPENSPECTIVE_LEXICON_DIR
     # When the lexicon is clean, fall back to the Detoxify model for text at least this
-    # many characters long (notes-like). Keeps short usernames lexicon-only (fast).
-    # 0 disables the ML fallback entirely (pure-lexicon "static" mode).
-    moderate_ml_min_chars: int = 40  # OPENSPECTIVE_MODERATE_ML_MIN_CHARS
-    # ML score at/above which the fallback flags text for human review.
-    moderate_ml_threshold: float = 0.8  # OPENSPECTIVE_MODERATE_ML_THRESHOLD
+    # many characters long. 0 disables the ML fallback (pure-lexicon "static" mode).
+    moderate_ml_min_chars: int = 12  # OPENSPECTIVE_MODERATE_ML_MIN_CHARS
+    # /moderate folds lexicon + ML into one severity score in [0, 1], then maps it:
+    #   score >= block_threshold        -> block
+    #   flag_threshold <= score < block -> flag (review by a moderator)
+    #   score < flag_threshold          -> allow
+    moderate_flag_threshold: float = 0.5  # OPENSPECTIVE_MODERATE_FLAG_THRESHOLD
+    moderate_block_threshold: float = 0.9  # OPENSPECTIVE_MODERATE_BLOCK_THRESHOLD
 
     @property
     def api_token_set(self) -> set[str]:

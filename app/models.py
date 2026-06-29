@@ -100,9 +100,14 @@ class ModerateRequest(BaseModel):
 
 
 class ModerateResponse(BaseModel):
-    """A moderation verdict: one allow/flag/block decision plus the evidence."""
+    """A moderation verdict: one allow/flag/block decision plus the evidence.
+
+    ``score`` is the unified severity in ``[0, 1]`` (max of the lexicon and ML signals)
+    that the decision is derived from, so callers can apply their own thresholds.
+    """
 
     decision: Literal["allow", "flag", "block"]
+    score: float  # unified severity in [0, 1]
     reasons: list[str] = Field(default_factory=list)  # matched lexicon terms / "ml"
     tier: str | None = None  # "block" | "flag" | "ml" | None
-    mlScore: float | None = None  # noqa: N815 — set only when the ML fallback ran
+    mlScore: float | None = None  # noqa: N815 — set only when the ML model ran
