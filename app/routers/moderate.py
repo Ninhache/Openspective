@@ -26,12 +26,12 @@ logger = logging.getLogger("openspective.moderate")
 
 router = APIRouter()
 
-# Attributes the ML layer considers. We deliberately EXCLUDE plain ``TOXICITY``: it is
-# a catch-all that fires on gaming combat language ("nuke the boss", "kill stuff") and
-# floods build text with false positives. The person/target-directed signals
-# (insult/identity-attack/threat) and the severe band separate real abuse from game
-# jargon cleanly — see the FP analysis. ``OBSCENE`` stays for profanity the lexicon missed.
-_ML_ATTRIBUTES = ["INSULT", "IDENTITY_ATTACK", "THREAT", "SEVERE_TOXICITY", "OBSCENE"]
+# Attributes the ML layer considers — only **target-directed** abuse signals. We exclude
+# both ``TOXICITY`` (fires on game combat jargon: "nuke the boss") and ``OBSCENE`` (fires
+# on gibberish and innocent build names, and double-counts profanity the lexicon already
+# handles better). The remaining signals separate real abuse from game text cleanly:
+# a full-dataset sweep flagged only insult/threat/identity hits, no false positives.
+_ML_ATTRIBUTES = ["INSULT", "IDENTITY_ATTACK", "THREAT", "SEVERE_TOXICITY"]
 
 
 def _decide(score: float, settings) -> str:
