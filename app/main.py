@@ -18,7 +18,7 @@ from app import __version__
 from app.config import get_settings
 from app.routers import analyze, chart, meta, moderate
 from app.security import AuthError, RateLimitError, rate_limit, require_auth
-from app.services import classifier, redis_client
+from app.services import classifier, detector, redis_client
 from app.services.metrics import REQUEST_COUNT, REQUEST_LATENCY
 
 
@@ -41,6 +41,8 @@ async def lifespan(app: FastAPI):
     )
     if settings.dev_mode:
         log.warning("DEV MODE on: DEBUG logging + permissive CORS. Docs at /docs.")
+    # Optionally fetch the fastText language model once, before serving requests.
+    detector.ensure_model(download=settings.langid_autodownload)
     # Load the model once, before serving any request.
     classifier.load_model(settings.model_variant)
     try:
