@@ -80,6 +80,13 @@ class Settings(BaseSettings):
     moderate_flag_threshold: float = 0.5  # OPENSPECTIVE_MODERATE_FLAG_THRESHOLD
     moderate_block_threshold: float = 0.9  # OPENSPECTIVE_MODERATE_BLOCK_THRESHOLD
 
+    # Language detection (detectedLanguages). When a fastText lid.176 model is available,
+    # it's used instead of langdetect (more accurate on short text). Empty path = default
+    # cache location. Predictions below the confidence floor return "unknown".
+    langid_model: str = ""  # OPENSPECTIVE_LANGID_MODEL (path to lid.176.ftz)
+    langid_min_confidence: float = 0.5  # OPENSPECTIVE_LANGID_MIN_CONFIDENCE
+    langid_autodownload: bool = False  # OPENSPECTIVE_LANGID_AUTODOWNLOAD (fetch at startup)
+
     @property
     def api_token_set(self) -> set[str]:
         """Return the configured Bearer tokens as a set (empty == auth disabled)."""
