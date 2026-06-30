@@ -4,8 +4,7 @@
 # like fuckankama); use only for stems that ~never occur inside innocent words.
 # This is a SEED list — grow it from the human review loop. Keep precision high.
 
-# --- EN ---
-fuck*
+# --- EN --- (slurs & person-directed insults; generic swears live in swear.txt)
 bitch*
 cunt*
 asshole*
@@ -20,7 +19,6 @@ rapist
 
 # --- FR ---
 pute
-putain
 salope
 salopard
 connard
@@ -43,13 +41,11 @@ fdp
 # --- ES ---
 puta
 puto
-mierda
 cabron
 cabrona
 gilipollas*
 polla
 pollas
-joder
 jodete
 maricon
 marica
@@ -57,7 +53,6 @@ maricona
 verga
 pendejo
 pendeja
-cono
 zorra
 perra
 mamon
@@ -79,8 +74,6 @@ pelotudo
 subnormal
 
 # --- PT ---
-caralho*
-foder
 buceta
 viado
 piroca

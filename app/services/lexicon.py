@@ -58,10 +58,18 @@ _MIN_SUBSTRING_LEN = 4
 
 @dataclass(frozen=True)
 class Lexicon:
-    """A loaded lexicon: token/substring terms per tier plus an allowlist."""
+    """A loaded lexicon: token/substring terms per tier plus an allowlist.
+
+    The ``swear`` tier holds generic profanity (``fuck``, ``shit``, ``putain``) that
+    blocks only in *strict* (identity) contexts like usernames; in free text it is left
+    to the ML, which tells colloquial use (``it's fucked up`` ~0.1) from targeted abuse
+    (``fuck you`` ~0.95). Slurs stay in ``block`` and fire everywhere.
+    """
 
     block_tokens: frozenset[str]
     block_substrings: frozenset[str]
+    swear_tokens: frozenset[str]
+    swear_substrings: frozenset[str]
     flag_tokens: frozenset[str]
     flag_substrings: frozenset[str]
     allow: frozenset[str]
@@ -113,11 +121,14 @@ def get_lexicon() -> Lexicon:
     settings = get_settings()
     directory = Path(settings.lexicon_dir) if settings.lexicon_dir else _DEFAULT_DIR
     block_t, block_s = _parse_file(directory / "block.txt")
+    swear_t, swear_s = _parse_file(directory / "swear.txt")
     flag_t, flag_s = _parse_file(directory / "flag.txt")
     allow_t, allow_s = _parse_file(directory / "allow.txt")
     lex = Lexicon(
         block_tokens=frozenset(block_t),
         block_substrings=frozenset(block_s),
+        swear_tokens=frozenset(swear_t),
+        swear_substrings=frozenset(swear_s),
         flag_tokens=frozenset(flag_t),
         flag_substrings=frozenset(flag_s),
         allow=frozenset(allow_t | allow_s),
@@ -158,13 +169,15 @@ def _matches(tokens: set[str], norm: str, term_tokens: frozenset[str],
     return hits
 
 
-def evaluate(text: str) -> Verdict:
+def evaluate(text: str, strict: bool = False) -> Verdict:
     """Evaluate ``text`` against the lexicon and return a :class:`Verdict`.
 
     Block matches take precedence over flag matches. Returns an ``allow`` verdict
     when nothing matches.
 
     :param text: Raw text (normalization happens here).
+    :param strict: When ``True`` (identity fields like usernames), generic swears block
+        too; when ``False`` (free text) swears are left to the ML. Slurs block either way.
     :returns: A :class:`Verdict` with decision, tier, and matched terms.
     """
     lex = get_lexicon()
@@ -173,6 +186,8 @@ def evaluate(text: str) -> Verdict:
     tokens = tokenize(norm)
 
     block_hits = _matches(tokens, norm, lex.block_tokens, lex.block_substrings, lex.allow)
+    if strict:
+        block_hits += _matches(tokens, norm, lex.swear_tokens, lex.swear_substrings, lex.allow)
     if block_hits:
         return Verdict(
             decision="block", tier="block", reasons=sorted(set(block_hits)), score=_BLOCK_SCORE

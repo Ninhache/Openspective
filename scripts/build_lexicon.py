@@ -49,6 +49,10 @@ MILD = {"stupid", "suck", "sucks", "jerk", "damn", "hell", "idiot", "idiots", "d
 STOP |= MILD
 # Known short offensive terms that bypass the len>=3/4 guards.
 SHORT_BLOCK = {"cum", "fdp", "ntm", "pute", "pd"}
+# Generic swears (not slurs / not person-directed): routed to the swear tier, which
+# blocks only in strict (identity) contexts and is left to the ML in free text.
+SWEAR = {"fuck", "shit", "bullshit", "putain", "merde", "mierda", "joder", "cono",
+         "caralho", "foder", "porra", "merda"}
 
 
 def _norm(text: str) -> str:
@@ -78,12 +82,30 @@ def _is_slur(word: str, ldnoobw: set[str]) -> bool:
     )
 
 
-def build(dump: Path, ldnoobw: set[str], seed_dir: Path) -> tuple[set[str], set[str], set[str]]:
-    data = json.loads(dump.read_text(encoding="utf-8"))
+def _read_seed(path: Path) -> tuple[set[str], set[str]]:
+    """Parse a seed file into (substring_terms, token_terms), folding accents."""
     sub: set[str] = set()
     tok: set[str] = set()
+    if not path.exists():
+        return sub, tok
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = _fold_accents(line.strip().lower())
+        if not line or line.startswith("#"):
+            continue
+        (sub if line.endswith("*") and len(line[:-1]) >= 4 else tok).add(line.rstrip("*"))
+    return sub, tok
+
+
+def build(dump: Path, ldnoobw: set[str], seed_dir: Path) -> dict[str, set[str]]:
+    """Return a dict of tiers: block_sub/block_tok, swear_sub/swear_tok, flag."""
+    data = json.loads(dump.read_text(encoding="utf-8"))
+    block_sub: set[str] = set()
+    block_tok: set[str] = set()
+    swear_sub: set[str] = set()
+    swear_tok: set[str] = set()
 
     def add(word: str, deep: bool) -> None:
+        sub, tok = (swear_sub, swear_tok) if word in SWEAR else (block_sub, block_tok)
         if deep and len(word) >= 5:
             sub.add(word)
         elif len(word) >= 4:
@@ -97,28 +119,30 @@ def build(dump: Path, ldnoobw: set[str], seed_dir: Path) -> tuple[set[str], set[
         if not w or w[0] == "." or any(c.isdigit() for c in w) or w in STOP:
             continue
         if w in SHORT_BLOCK:
-            tok.add(w)
+            block_tok.add(w)
             continue
         if ct in (0, 1):  # chat-forbidden profanity
             add(w, d["m_deepSearch"])
         elif ct == 2 and _is_slur(w, ldnoobw):  # name-forbidden, but a real slur
             add(w, d["m_deepSearch"])
 
-    # Merge the bundled seed, preserving '*' substring markers.
-    for line in (seed_dir / "block.txt").read_text(encoding="utf-8").splitlines():
-        line = _fold_accents(line.strip().lower())
-        if not line or line.startswith("#"):
-            continue
-        (sub if line.endswith("*") and len(line[:-1]) >= 4 else tok).add(line.rstrip("*"))
+    # Merge the bundled seed tiers (block / swear / flag), preserving '*' markers.
+    bs, bt = _read_seed(seed_dir / "block.txt")
+    block_sub |= bs
+    block_tok |= bt
+    ss, st = _read_seed(seed_dir / "swear.txt")
+    swear_sub |= ss
+    swear_tok |= st
+    flag_sub, flag_tok = _read_seed(seed_dir / "flag.txt")
 
-    sub -= STOP
-    tok = {t for t in tok if t not in STOP and len(t) >= 3}
-    flag = {
-        _fold_accents(ln.strip().lower().rstrip("*"))
-        for ln in (seed_dir / "flag.txt").read_text(encoding="utf-8").splitlines()
-        if ln.strip() and not ln.startswith("#")
+    def clean(s: set[str]) -> set[str]:
+        return {t for t in s if t not in STOP and len(t) >= 3}
+
+    return {
+        "block_sub": clean(block_sub), "block_tok": clean(block_tok),
+        "swear_sub": clean(swear_sub), "swear_tok": clean(swear_tok),
+        "flag": clean(flag_sub | flag_tok),
     }
-    return sub, tok, flag
 
 
 def main() -> None:
@@ -132,18 +156,25 @@ def main() -> None:
     args = ap.parse_args()
 
     ldnoobw = load_ldnoobw(args.ldnoobw_dir)
-    sub, tok, flag = build(args.dump, ldnoobw, args.seed_dir)
+    tiers = build(args.dump, ldnoobw, args.seed_dir)
     args.out.mkdir(parents=True, exist_ok=True)
-    block_lines = sorted(s + "*" for s in sub) + sorted(tok)
-    (args.out / "block.txt").write_text("\n".join(block_lines) + "\n")
-    (args.out / "flag.txt").write_text("\n".join(sorted(flag)) + "\n")
+
+    def write_tier(name: str, sub: set[str], tok: set[str]) -> None:
+        (args.out / name).write_text("\n".join(sorted(s + "*" for s in sub) + sorted(tok)) + "\n")
+
+    write_tier("block.txt", tiers["block_sub"], tiers["block_tok"])
+    write_tier("swear.txt", tiers["swear_sub"], tiers["swear_tok"])
+    (args.out / "flag.txt").write_text("\n".join(sorted(tiers["flag"])) + "\n")
     # Allowlist: explicit Wakfu vocab only (NOT derived from censorType 2).
+    blocked = tiers["block_sub"] | tiers["block_tok"] | tiers["swear_sub"] | tiers["swear_tok"]
     allow = {"zob", "zobal", "iop", "cra", "sram", "eniripsa", "ecaflip", "enutrof", "sadida",
              "osamodas", "feca", "xelor", "sacrieur", "pandawa", "roublard", "ouginak",
-             "huppermage", "eliotrope", "steamer", "ogrest", "support", "astrub"} - (sub | tok)
+             "huppermage", "eliotrope", "steamer", "ogrest", "support", "astrub"} - blocked
     (args.out / "allow.txt").write_text("\n".join(sorted(allow)) + "\n")
-    print(f"wrote {args.out}: block={len(sub) + len(tok)} (sub={len(sub)} tok={len(tok)}) "
-          f"flag={len(flag)} allow={len(allow)}")
+    nblock = len(tiers["block_sub"]) + len(tiers["block_tok"])
+    nswear = len(tiers["swear_sub"]) + len(tiers["swear_tok"])
+    print(f"wrote {args.out}: block={nblock} swear={nswear} flag={len(tiers['flag'])} "
+          f"allow={len(allow)}")
 
 
 if __name__ == "__main__":
