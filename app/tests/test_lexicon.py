@@ -21,44 +21,41 @@ def test_clean_text_is_allowed():
     assert lexicon.evaluate("Mathius the brave").decision == "allow"
 
 
-def test_block_substring_catches_concatenation():
-    """A '*' term (fuck) matches even when glued to other text."""
-    v = lexicon.evaluate("fuckankama")
+def test_slur_blocks_in_any_context():
+    """Slurs / person-directed insults block regardless of strict."""
+    assert lexicon.evaluate("espece de salope").decision == "block"
+    assert lexicon.evaluate("puta madre").decision == "block"
+    assert lexicon.evaluate("seu viado").decision == "block"
+
+
+def test_swear_blocks_only_in_strict_context():
+    """Generic swears (fuck) block in strict (username) but not in free text."""
+    assert lexicon.evaluate("fuckankama", strict=True).decision == "block"
+    assert lexicon.evaluate("fuckankama").decision == "allow"  # lenient -> left to the ML
+
+
+def test_swear_substring_catches_concatenation_in_strict():
+    v = lexicon.evaluate("fuckankama", strict=True)
     assert v.decision == "block"
     assert "fuck" in v.reasons
 
 
-def test_block_token_match():
-    """A whole-token block term (salope) fires as its own word."""
-    assert lexicon.evaluate("espece de salope").decision == "block"
-
-
-def test_block_spanish_and_portuguese():
-    assert lexicon.evaluate("puta madre").decision == "block"
-    assert lexicon.evaluate("vai tomar no caralho").decision == "block"
-
-
 def test_flag_tier_is_soft():
-    """'shit' is a flag (soft), not a block."""
-    v = lexicon.evaluate("this is shit")
+    """A borderline flag-tier term yields 'flag', not block."""
+    v = lexicon.evaluate("sale tamere")
     assert v.decision == "flag"
     assert v.tier == "flag"
 
 
-def test_bullshit_not_over_flagged():
-    """'shit' is token-only, so legit 'bullshit' build names are not flagged."""
+def test_colloquial_swear_allowed_in_free_text():
+    """'shit'/'bullshit' in free text are left to the ML (lenient), not lexicon-blocked."""
     assert lexicon.evaluate("Ozzy bullshit build").decision == "allow"
+    assert lexicon.evaluate("this build is shit").decision == "allow"
 
 
 def test_allowlist_domain_vocab_not_flagged():
     """'zob' is the Zobal class in Wakfu, not profanity — allowlisted."""
     assert lexicon.evaluate("zob heal 200").decision == "allow"
-
-
-def test_token_matching_avoids_substring_false_positives():
-    """Whole-token default means 'pute' does not fire inside 'reputation'/'dispute'."""
-    assert lexicon.evaluate("ma reputation est bonne").decision == "allow"
-    assert lexicon.evaluate("une longue dispute").decision == "allow"
 
 
 def test_accent_folding_matches_de_accented_entry():
@@ -70,8 +67,15 @@ def test_accent_folding_matches_de_accented_entry():
 def test_score_is_set_per_tier():
     """Block hits score 1.0, flag hits 0.6, clean text 0.0."""
     assert lexicon.evaluate("salope").score == 1.0
-    assert lexicon.evaluate("shit").score == 0.6
+    assert lexicon.evaluate("fuck", strict=True).score == 1.0
+    assert lexicon.evaluate("tamere").score == 0.6
     assert lexicon.evaluate("Mathius").score == 0.0
+
+
+def test_token_matching_avoids_substring_false_positives():
+    """Whole-token default means 'pute' does not fire inside 'reputation'/'dispute'."""
+    assert lexicon.evaluate("ma reputation est bonne").decision == "allow"
+    assert lexicon.evaluate("une longue dispute").decision == "allow"
 
 
 def test_spanish_con_is_not_profanity():

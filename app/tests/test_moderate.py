@@ -38,12 +38,30 @@ def test_allow_decision_for_domain_vocab(client):
 
 
 def test_flag_decision_soft_lexicon(client):
-    # 'shit' is a flag-tier token; keep it short so ML doesn't run and escalate it
-    resp = client.post(MODERATE_URL, json={"text": "shit"})
+    # 'tamere' is a flag-tier token; keep it short so ML doesn't run and escalate it
+    resp = client.post(MODERATE_URL, json={"text": "tamere"})
     body = resp.json()
     assert body["decision"] == "flag"
     assert body["tier"] == "flag"
     assert body["score"] == 0.6
+
+
+def test_swear_blocks_in_username_context(client):
+    """A swear in an identity field (strict) is blocked outright."""
+    resp = client.post(MODERATE_URL, json={"text": "shithead", "context": "username"})
+    assert resp.json()["decision"] == "block"
+
+
+def test_swear_in_free_text_left_to_ml(client, monkeypatch):
+    """A colloquial swear in free text is not lexicon-blocked; a low ML score allows it."""
+    from app.routers import moderate
+
+    async def _low(text, attrs):
+        return {a: 0.05 for a in attrs}
+
+    monkeypatch.setattr(moderate.scoring, "summary_scores", _low)
+    resp = client.post(MODERATE_URL, json={"text": "this build is fucked up honestly"})
+    assert resp.json()["decision"] == "allow"
 
 
 def test_short_clean_text_skips_ml(client):

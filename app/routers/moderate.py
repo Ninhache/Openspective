@@ -26,6 +26,11 @@ logger = logging.getLogger("openspective.moderate")
 
 router = APIRouter()
 
+# Identity-field contexts where generic swears are blocked outright (a username can't be
+# "fuckankama"). Other contexts (build names, bios, notes) leave swears to the ML, which
+# tells colloquial use from targeted abuse.
+_STRICT_CONTEXTS = {"username", "slug", "displayname", "display_name", "name", "handle"}
+
 # Attributes the ML layer considers — only **target-directed** abuse signals. We exclude
 # both ``TOXICITY`` (fires on game combat jargon: "nuke the boss") and ``OBSCENE`` (fires
 # on gibberish and innocent build names, and double-counts profanity the lexicon already
@@ -52,7 +57,9 @@ async def moderate(request: ModerateRequest):
     settings = get_settings()
 
     # 1) Lexicon (deterministic). A block hit is a certainty — settle immediately.
-    verdict = lexicon.evaluate(request.text)
+    # Identity fields (username/slug) block generic swears too; free text leaves them to ML.
+    strict = (request.context or "").strip().lower() in _STRICT_CONTEXTS
+    verdict = lexicon.evaluate(request.text, strict=strict)
     if verdict.decision == "block":
         return ModerateResponse(
             decision="block", score=verdict.score, reasons=verdict.reasons, tier="block"

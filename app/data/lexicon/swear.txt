@@ -1,0 +1,24 @@
+# Swear tier — generic profanity that is NOT a slur or person-directed insult.
+# Blocks only in *strict* (identity) contexts like usernames/slugs; in free text it is
+# left to the ML, which separates colloquial use ("it's fucked up" ~0.1) from targeted
+# abuse ("fuck you" ~0.95). Same line format as block.txt (token default, '*' = substring).
+
+# --- EN ---
+fuck*
+shit*
+bullshit*
+
+# --- FR ---
+putain
+merde
+
+# --- ES ---
+mierda
+joder
+cono
+
+# --- PT ---
+caralho*
+foder
+porra
+merda
