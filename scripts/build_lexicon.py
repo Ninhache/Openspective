@@ -42,6 +42,11 @@ HATE = {"daesh", "isis", "nazi", "hitler", "kkk", "bamboula", "bougnoul", "negro
 STOP = {"con", "cu", "tit", "titi", "tae", "tai", "ass", "bb", "kk", "vv", "ww", "tg",
         "lul", "zebi", "bedo", "gringo", "pok", "pokpok", "hie", "erat", "erad", "weed",
         "bullshit", "isad"}
+# Mild / context-dependent words: NOT hard-blocked. They're fine colloquially
+# ("I'm stupid", "this sucks") and the ML scores targeted use ("you're stupid") instead.
+MILD = {"stupid", "suck", "sucks", "jerk", "damn", "hell", "idiot", "idiots", "dumb",
+        "moron", "loser", "noob", "trash", "dummy", "crap"}
+STOP |= MILD
 # Known short offensive terms that bypass the len>=3/4 guards.
 SHORT_BLOCK = {"cum", "fdp", "ntm", "pute", "pd"}
 
